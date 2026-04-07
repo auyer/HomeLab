@@ -1,0 +1,94 @@
+---
+# Prosody role tasks — install, community modules, configure
+
+- name: Ensure extrepo is installed
+  ansible.builtin.apt:
+    name: extrepo
+    state: present
+    update_cache: true
+
+- name: Enable Prosody repository
+  ansible.builtin.command:
+    cmd: extrepo enable prosody
+  args:
+    creates: /etc/apt/sources.list.d/extrepo_prosody.list
+
+- name: Ensure Prosody and dependencies are installed
+  ansible.builtin.apt:
+    name: "{{ prosody_additional_debian_packages }}"
+    state: present
+    update_cache: true
+
+- name: Ensure Prosody community modules directory exists
+  ansible.builtin.file:
+    path: /usr/local/lib/prosody/modules
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Check which Prosody community modules are installed
+  ansible.builtin.stat:
+    path: "/usr/local/lib/prosody/modules/mod_{{ item }}.lua"
+  register: prosody_module_check
+  loop: "{{ prosody_community_modules }}"
+
+- name: Install missing Prosody community modules
+  ansible.builtin.command:
+    cmd: "prosodyctl install --server=https://modules.prosody.im/rocks/ {{ item.item }}"
+  loop: "{{ prosody_module_check.results }}"
+  when: not item.stat.exists
+  notify:
+    - Check prosody configuration
+    - Restart prosody
+
+- name: Ensure Prosody configuration directory exists
+  ansible.builtin.file:
+    path: /etc/prosody
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Deploy main Prosody configuration
+  ansible.builtin.template:
+    src: prosody.cfg.lua
+    dest: /etc/prosody/prosody.cfg.lua
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Check prosody configuration
+    - Restart prosody
+
+- name: Deploy Prosody conf.d configurations from templates
+  ansible.builtin.template:
+    src: "{{ item }}"
+    dest: "/etc/prosody/conf.d/{{ item | basename }}"
+    owner: root
+    group: root
+    mode: "0644"
+  with_fileglob:
+    - "../templates/conf.d/*.lua"
+
+  vars:
+      # Look up settings using the exact filename (e.g., example.conf.lua)
+      conf_settings: "{{ prosody_configs[item | basename] | default({}) }}"
+  notify:
+    - Check prosody configuration
+    - Restart prosody
+
+# # TODO: set at template too
+# - name: Deploy Prosody conf.d configurations
+#   ansible.builtin.copy:
+#     src: conf.d/
+#     dest: /etc/prosody/conf.d/
+#     owner: root
+#     group: root
+#     mode: "0644"
+#     directory_mode: "0755"
+#   notify:
+#     - Check prosody configuration
+#     - Restart prosody
+
+

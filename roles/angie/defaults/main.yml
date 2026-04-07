@@ -1,0 +1,4 @@
+---
+# Default variables for the angie role (user-overridable)
+angie_ssl_certificate: "/etc/letsencrypt/live/{{ xmpp_domain }}/fullchain.pem"
+angie_ssl_certificate_key: "/etc/letsencrypt/live/{{ xmpp_domain }}/privkey.pem"

@@ -1,0 +1,11 @@
+---
+- name: Check prosody configuration
+  ansible.builtin.command:
+    cmd: prosodyctl check config
+  changed_when: false
+  failed_when: false
+
+- name: Restart prosody
+  ansible.builtin.systemd:
+    name: prosody
+    state: restarted

@@ -1,0 +1,96 @@
+---
+# Angie role tasks — install, configure
+
+- name: Ensure Angie prerequisites are installed
+  ansible.builtin.apt:
+    name:
+      - ca-certificates
+      - curl
+    state: present
+    update_cache: true
+
+- name: Add Angie signing key
+  ansible.builtin.get_url:
+    url: https://angie.software/keys/angie-signing.gpg
+    dest: /etc/apt/trusted.gpg.d/angie-signing.gpg
+    mode: "0644"
+
+- name: Add Angie repository
+  ansible.builtin.shell: |
+    echo "deb https://download.angie.software/angie/$(. /etc/os-release && echo "$ID/$VERSION_ID $VERSION_CODENAME") main" \
+      > /etc/apt/sources.list.d/angie.list
+  args:
+    creates: /etc/apt/sources.list.d/angie.list
+
+- name: Ensure Angie is installed
+  ansible.builtin.apt:
+    name: angie
+    state: present
+    update_cache: true
+
+- name: Ensure Angie configuration directory exists
+  ansible.builtin.file:
+    path: /etc/angie
+    state: directory
+    owner: angie
+    group: angie
+    mode: "0755"
+
+- name: Deploy main Angie configuration
+  ansible.builtin.template:
+    src: angie.conf.j2
+    dest: /etc/angie/angie.conf
+    owner: angie
+    group: angie
+    mode: "0644"
+  notify:
+    - Test Angie configuration
+    - Reload Angie
+
+- name: Deploy static Angie conf.d configurations
+  ansible.builtin.copy:
+    src: conf.d/
+    dest: /etc/angie/conf.d/
+    owner: angie
+    group: angie
+    mode: "0644"
+    directory_mode: "0755"
+  notify:
+    - Test Angie configuration
+    - Reload Angie
+
+- name: Deploy templated Angie conf.d configurations
+  ansible.builtin.template:
+    src: "conf.d/{{ item | basename }}"
+    dest: "/etc/angie/conf.d/{{ item | basename | regex_replace('\\.j2$', '') }}"
+    owner: angie
+    group: angie
+    mode: "0644"
+  with_fileglob: "conf.d/*.j2"
+  notify:
+    - Test Angie configuration
+    - Reload Angie
+
+- name: Deploy static Angie stream.d configurations
+  ansible.builtin.copy:
+    src: stream.d/
+    dest: /etc/angie/stream.d/
+    owner: angie
+    group: angie
+    mode: "0644"
+    directory_mode: "0755"
+  notify:
+    - Test Angie configuration
+    - Reload Angie
+
+- name: Deploy templated Angie stream.d configurations
+  ansible.builtin.template:
+    src: "stream.d/{{ item | basename }}"
+    dest: "/etc/angie/stream.d/{{ item | basename | regex_replace('\\.j2$', '') }}"
+    owner: angie
+    group: angie
+    mode: "0644"
+  with_fileglob: "stream.d/*.j2"
+  notify:
+    - Test Angie configuration
+    - Reload Angie

@@ -1,0 +1,13 @@
+---
+- name: Deploy all XMPP infrastructure services
+  hosts: all
+  gather_facts: false
+
+  pre_tasks:
+    - name: Display deployment target
+      ansible.builtin.debug:
+        msg: "Deploying configuration to {{ inventory_hostname }}"
+
+- import_playbook: prosody.yml
+- import_playbook: angie.yml
+- import_playbook: coturn.yml

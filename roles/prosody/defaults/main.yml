@@ -1,0 +1,44 @@
+---
+# Prosody server variables
+prosody_trusted_proxies: "127.0.0.1, ::1"
+prosody_db_password: ""
+prosody_db_host: ""
+prosody_db: "postgres"
+prosody_matrix_bridge_enabled: true
+prosody_matrix_bridge_token: ""
+prosody_admins: { "admin@example.tld" }
+abuse_addresses:
+  - "xmpp:abuse@example.tld"
+  - "mailto:abuse@example.tld"
+
+admin_addresses:
+  - "xmpp:admin@example.tld"
+  - "mailto:admin@example.tld"
+
+prosody_configs:
+  example.cfg.lua:
+    chat_hostname: "chat.example.tld"
+    base_hostname: "example.tld"
+    unified_push_secret: ""
+
+# Default variables for the prosody role (user-overridable)
+prosody_community_modules:
+  - cloud_notify
+  - cloud_notify_extensions
+  - unified_push
+  - csi_simple
+  - pubsub_serverinfo
+  - pubsub_feeds
+  - pubsub_get
+  - pubsub_eventsource
+  - mod_invites_register_web
+  - mod_privilege
+
+prosody_additional_debian_packages:
+  - prosody
+  - lua-dbi-postgresql
+  - lua-unbound
+  - lua-bitop
+  - luarocks
+  - libjs-bootstrap4
+  - libjs-jquery

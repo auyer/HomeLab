@@ -1,0 +1,7 @@
+---
+- name: Deploy Coturn TURN server
+  hosts: coturn
+  become: true
+
+  roles:
+    - coturn

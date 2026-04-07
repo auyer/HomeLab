@@ -1,0 +1,7 @@
+---
+# Default variables for the coturn role (user-overridable)
+coturn_verbose: false
+coturn_no_software_attribute: true
+coturn_no_rfc5780: true
+coturn_no_stun_backward_compatibility: true
+coturn_response_origin_only_with_rfc5780: true
