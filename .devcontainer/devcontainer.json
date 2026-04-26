@@ -1,0 +1,9 @@
+{
+	"name": "HomeLab Development Container",
+	"build": {
+		"dockerfile": "./Containerfile",
+		"context": ".."
+	},
+	"customizations": {},
+	"remoteUser": "devbox"
+}

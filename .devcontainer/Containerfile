@@ -1,0 +1,11 @@
+FROM docker.io/python:slim-trixie
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+RUN apt update && \
+	apt upgrade -y && \
+	apt install -y graphviz ansible
+
+
+# Installing your devbox project
+WORKDIR /code
+
