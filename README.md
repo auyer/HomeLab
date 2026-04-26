@@ -1,10 +1,18 @@
-# XMPP Infrastructure Configuration (Prosody + Angie + Coturn)
+# Homelab infrastructure
 
-Ansible role-based project to install, configure, and manage three XMPP infrastructure services:
+I've been running my Homelab manually configuring thing for years.
+Recently, I finally decided to start moving things to IaC.
+I started with my Prosody setup, with Ansible.
+Maybe someday I will import the LXCs and VMs to Terraform too.
+
+## XMPP Infrastructure Configuration (Prosody + Biboumi + Angie + Coturn)
+
+Ansible role-based project to install, configure, and manage four XMPP infrastructure services:
 
 | Service  | Host          | Group    | SSH User |
 |----------|---------------|----------|----------|
 | Prosody  | 10.255.2.27   | prosody  | root     |
+| Biboumi  | 10.255.2.27   | prosody  | root     |
 | Angie    | 10.255.0.100  | pi       | auyer    |
 | Coturn   | 10.255.2.28   | coturn   | root     |
 
@@ -17,14 +25,12 @@ Follows [Ansible best practices](https://docs.ansible.com/ansible/latest/user_gu
 ├── ansible.cfg              # Ansible settings (roles path, inventory)
 ├── site.yml                 # Master playbook — deploys all services
 ├── prosody.yml              # Single-service playbook (Prosody only)
+├── biboumi.yml              # Single-service playbook (Biboumi only)
 ├── angie.yml                # Single-service playbook (Angie only)
 ├── coturn.yml               # Single-service playbook (Coturn only)
 ├── inventory                # Host groups and SSH connection details
 ├── group_vars/
-│   ├── all.yml              # Shared vars (domain, backend IPs, TURN secret)
-│   ├── prosody.yml          # Prosody-specific vars (DB creds, trusted proxies)
-│   ├── pi.yml               # Angie server vars
-│   └── coturn.yml           # Coturn-specific vars
+│   ├── ....yml              # Shared vars (domain, backend IPs, TURN secret)
 └── roles/
     ├── prosody/
     │   ├── tasks/main.yml      # Install packages, community modules, deploy configs
@@ -34,6 +40,11 @@ Follows [Ansible best practices](https://docs.ansible.com/ansible/latest/user_gu
     │   │   ├── conf.d/         # Active vhost/component configs
     │   │   └── conf.avail/     # Available vhost templates
     │   └── defaults/main.yml   # Overridable vars (community module list)
+    ├── biboumi/
+    │   ├── tasks/main.yml      # Install package, create db dir, deploy config
+    │   ├── handlers/main.yml   # Service restart
+    │   ├── templates/          # Jinja2 biboumi.cfg
+    │   └── defaults/main.yml   # Overridable vars (host, password, DB, XMPP server)
     ├── angie/
     │   ├── tasks/main.yml      # Install repo + package, deploy configs
     │   ├── handlers/main.yml   # Config test + reload
@@ -59,6 +70,7 @@ Both `files/` and `templates/` mirror the remote directory structure (e.g., `fil
 ### Angie Hybrid Deploy (Static + Template Override)
 
 The Angie role deploys `conf.d/` in two passes:
+
 1. **Static copy** — all files from `roles/angie/files/conf.d/`
 2. **Templated override** — any `.j2` file in `roles/angie/templates/conf.d/` replaces the static copy
 
@@ -66,26 +78,15 @@ Same pattern for `stream.d/`. This lets you keep simple files static while templ
 
 ## Variables
 
-### Shared (group_vars/all.yml)
+### Biboumi-Specific (role defaults)
 
-| Variable              | Description                     | Default                  |
-|-----------------------|---------------------------------|--------------------------|
-| `xmpp_domain`         | Primary XMPP domain             | `chat.rcpassos.me`       |
-| `xmpp_admin`          | Admin JID                       | `auyer@chat.rcpassos.me` |
-| `prosody_backend`     | Prosody server IP               | `10.255.2.27`            |
-| `coturn_backend`      | Coturn server IP                | `10.255.2.28`            |
-| `angie_resolver_dns`  | DNS resolvers for Angie         | `10.255.0.100 10.255.0.101` |
-| `turn_external_secret`| TURN shared secret              | (see group_vars)         |
-| `turn_external_host`  | TURN server hostname            | `turn.chat.rcpassos.me`  |
-
-### Prosody-Specific (group_vars/prosody.yml)
-
-| Variable                | Description                     |
-|-------------------------|---------------------------------|
-| `prosody_db_password`   | PostgreSQL password             |
-| `prosody_db_host`       | PostgreSQL hostname             |
-| `prosody_trusted_proxies`| Comma-separated trusted proxy IPs|
-| `prosody_community_modules`| List of modules to install    |
+| Variable                | Description                     | Default                  |
+|-------------------------|---------------------------------|--------------------------|
+| `biboumi_hostname`     | XMPP component hostname         | `biboumi.example.com`   |
+| `biboumi_password`     | XMPP component password          | (set in group_vars)     |
+| `biboumi_db_dir`        | SQLite database directory        | `/opt/biboumi`          |
+| `biboumi_xmpp_server_ip`| XMPP server to connect to       | `127.0.0.1`             |
+| `biboumi_port`         | XMPP component port              | `5347`                  |
 
 ### Role Defaults (roles/*/defaults/main.yml)
 
@@ -103,6 +104,7 @@ ansible-playbook site.yml
 
 ```bash
 ansible-playbook prosody.yml
+ansible-playbook biboumi.yml
 ansible-playbook angie.yml
 ansible-playbook coturn.yml
 ```
@@ -137,8 +139,9 @@ ansible-playbook site.yml --ask-pass --ask-become-pass
 ## What Happens on Each Run
 
 1. **Prosody**: packages installed → community modules checked/installed → configs templated/copied → `prosodyctl check config` → restart
-2. **Angie**: repository + signing key added → package installed → main config + conf.d/ + stream.d/ deployed → `angie -t` → reload
-3. **Coturn**: package installed → daemon enabled in `/etc/default/coturn` → config templated → restart
+2. **Biboumi**: package installed → SQLite database dir created → config templated → service enabled and started
+3. **Angie**: repository + signing key added → package installed → main config + conf.d/ + stream.d/ deployed → `angie -t` → reload
+4. **Coturn**: package installed → daemon enabled in `/etc/default/coturn` → config templated → restart
 
 Handlers only fire when files actually **changed**, so unchanged runs are fast and safe.
 
@@ -147,6 +150,7 @@ Handlers only fire when files actually **changed**, so unchanged runs are fast a
 | Service | Owner      | Mode |
 |---------|------------|------|
 | Prosody | `root:root`| 0644 |
+| Biboumi | `_biboumi:_biboumi`| 0640 |
 | Angie   | `angie:angie`| 0644 |
 | Coturn  | `root:root`| 0644 |
 
@@ -157,6 +161,9 @@ When a config file is modified directly on a server, sync it back:
 ```bash
 # From Prosody
 rsync -avz root@10.255.2.27:/etc/prosody/conf.d/rcpassosme.cfg.lua roles/prosody/files/conf.d/
+
+# From Biboumi
+rsync -avz root@10.255.2.27:/etc/biboumi/biboumi.cfg roles/biboumi/templates/biboumi.cfg.j2
 
 # From Coturn
 rsync -avz root@10.255.2.28:/etc/turnserver.conf roles/coturn/templates/turnserver.conf.j2
@@ -170,26 +177,9 @@ rsync -avz --rsync-path="sudo rsync" auyer@10.255.0.100:/etc/angie/conf.d/prosod
 - **Static** → place in `roles/<name>/files/<path>/`
 - **Template** (contains IPs, secrets, etc.) → place in `roles/<name>/templates/<path>.j2` and replace hardcoded values with `{{ var }}`
 
-### Commit and Deploy
-
-```bash
-git add roles/ group_vars/
-git commit -m "sync: import updated config from server"
-ansible-playbook site.yml
-```
-
 ## SSH Requirements
 
-- **Prosody** / **Coturn**: SSH as `root` (no sudo needed)
+- **Prosody** / **Biboumi** / **Coturn**: SSH as `root` (no sudo needed)
 - **Angie**: SSH as `auyer` with `sudo` (handled by `become: true`)
 
 Ensure your SSH keys are loaded. The inventory file defines connection parameters per host.
-
-## Security Note
-
-Secrets live in `group_vars/` files. For a shared repository, migrate sensitive values to **Ansible Vault**:
-
-```bash
-ansible-vault encrypt group_vars/prosody.yml
-ansible-playbook site.yml --ask-vault-pass
-```
