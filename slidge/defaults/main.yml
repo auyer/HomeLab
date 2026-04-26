@@ -1,0 +1,10 @@
+---
+# The absolute path where the container data will be stored on the host
+matridge_data_dir: "/opt/matridge/var"
+matridge_jid: "matrix.example.com"
+matridge_secret: "YOUR_SUPER_SECRET_VALUE"
+# If running rootless, you might want to specify the user. 
+# Note: --userns=keep-id is typically used for rootless podman.
+matridge_systemd_dir: "/etc/systemd/system"
+
+

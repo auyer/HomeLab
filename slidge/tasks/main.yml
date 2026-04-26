@@ -1,0 +1,51 @@
+---
+
+- name: Update apt cache and install Podman
+  ansible.builtin.apt:
+    name: podman
+    state: present
+    update_cache: yes
+
+- name: Ensure the data directory exists
+  ansible.builtin.file:
+    path: "{{ matridge_data_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Create and run Matridge container
+  containers.podman.podman_container:
+    name: matridge
+    image: codeberg.org/slidge/matridge:latest
+    state: started
+    # TODO: add check for non-root user
+    # userns: keep-id
+    volume:
+      - "{{ matridge_data_dir }}:/var/lib/slidge:U"
+    # Set the container to use the host network
+    network: host
+    # The arguments passed to the entrypoint
+    command:
+      # - matridge # not included because is already part of the entrypoint
+      - "--jid"
+      - "{{ matridge_jid }}"
+      - "--secret"
+      - "{{ matridge_secret }}"
+      - "--home-dir"
+      - "/var/lib/slidge"
+    # Automatically generate the systemd service file
+    generate_systemd:
+      path: "{{ matridge_systemd_dir }}"
+      restart_policy: always
+      container_prefix: container
+      # Forces systemd to manage the lifecycle
+      new: yes 
+  register: podman_service
+  notify: 
+    - Reload systemd
+
+- name: Ensure matridge systemd service is enabled and started
+  ansible.builtin.systemd:
+    name: container-matridge
+    enabled: yes
+    state: started
+    daemon_reload: yes

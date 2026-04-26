@@ -1,0 +1,7 @@
+---
+- name: Deploy Slidge bridge to XMPP server
+  hosts: prosody
+  become: true
+
+  roles:
+    - slidge
