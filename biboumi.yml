@@ -1,0 +1,7 @@
+---
+- name: Deploy biboumi bridge to XMPP server
+  hosts: prosody
+  become: true
+
+  roles:
+    - biboumi

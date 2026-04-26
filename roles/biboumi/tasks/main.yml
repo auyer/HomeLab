@@ -1,0 +1,46 @@
+---
+# - name: Ensure biboumi system group exists
+#   ansible.builtin.group:
+#     name: "{{ biboumi_group }}"
+#     state: present
+#     system: yes
+#
+# - name: Ensure biboumi system user exists
+#   ansible.builtin.user:
+#     name: "{{ biboumi_user }}"
+#     group: "{{ biboumi_group }}"
+#     shell: /usr/sbin/nologin
+#     system: yes
+#     create_home: no
+#     state: present
+
+- name: Update apt cache and install biboumi
+  ansible.builtin.apt:
+    name: biboumi
+    state: present
+    update_cache: yes
+
+- name: Ensure the SQLite database directory exists
+  ansible.builtin.file:
+    path: "{{ biboumi_db_dir }}"
+    state: directory
+    mode: '0755'
+    owner: "{{ biboumi_user }}"
+    group: "{{ biboumi_group }}"
+  # Only create the folder if the database isn't pointing to a PostgreSQL URI
+  when: not biboumi_db_name.startswith('postgresql://') and not biboumi_db_name.startswith('postgres://')
+
+- name: Create biboumi.cfg from template
+  ansible.builtin.template:
+    src: biboumi.cfg
+    dest: /etc/biboumi/biboumi.cfg
+    owner: "{{ biboumi_user }}"
+    group: "{{ biboumi_group }}"
+    mode: '0640'
+  notify: Restart biboumi
+
+- name: Ensure biboumi systemd service is enabled and started
+  ansible.builtin.systemd:
+    name: biboumi
+    enabled: yes
+    state: started

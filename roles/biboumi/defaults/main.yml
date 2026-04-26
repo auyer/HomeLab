@@ -1,0 +1,34 @@
+---
+# default debian user/group names
+# to change these, the .service file needs to be updated too (not implemented)
+biboumi_user: "_biboumi"
+biboumi_group: "_biboumi"
+
+# Mandatory fields
+biboumi_hostname: "biboumi.example.com"
+biboumi_password: "ChangeMeToAStrongPassword"
+
+# Database configuration
+biboumi_db_dir: "/opt/biboumi"
+biboumi_db_name: "{{ biboumi_db_dir }}/biboumi.sqlite"
+
+# Network & XMPP Server options
+biboumi_xmpp_server_ip: "127.0.0.1"
+biboumi_port: 5347
+
+# Logging
+biboumi_log_level: 1
+biboumi_log_file: ""
+
+# General optional settings (leave empty to omit from config)
+biboumi_admin: ""
+biboumi_fixed_irc_server: ""
+biboumi_persistent_by_default: "false"
+biboumi_realname_customization: "true"
+biboumi_realname_from_jid: "false"
+biboumi_webirc_password: ""
+biboumi_ca_file: ""
+biboumi_outgoing_bind: ""
+biboumi_identd_port: 113
+biboumi_policy_directory: ""
+

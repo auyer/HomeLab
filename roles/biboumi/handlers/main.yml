@@ -1,0 +1,6 @@
+---
+
+- name: Restart biboumi
+  ansible.builtin.systemd:
+    name: biboumi
+    state: restarted
