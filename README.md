@@ -5,6 +5,11 @@ Recently, I finally decided to start moving things to IaC.
 I started with my Prosody setup, with Ansible.
 Maybe someday I will import the LXCs and VMs to Terraform too.
 
+## This repository contains:
+
+OpenTofu (Terraform) configurations in the [tofu](tofu) folder.
+Ansible confis under [ansible](andible) folder.
+
 ## XMPP Infrastructure Configuration (Prosody + Biboumi + Angie + Coturn)
 
 Ansible role-based project to install, configure, and manage four XMPP infrastructure services:
@@ -21,7 +26,7 @@ Ansible role-based project to install, configure, and manage four XMPP infrastru
 Follows [Ansible best practices](https://docs.ansible.com/ansible/latest/user_guide/playbooks_best_practices.html#directory-layout): roles encapsulate all logic, playbooks are thin orchestrators.
 
 ```
-.
+ansible
 ├── ansible.cfg              # Ansible settings (roles path, inventory)
 ├── site.yml                 # Master playbook — deploys all services
 ├── prosody.yml              # Single-service playbook (Prosody only)

@@ -11,3 +11,6 @@
 - import_playbook: prosody.yml
 - import_playbook: angie.yml
 - import_playbook: coturn.yml
+- import_playbook: slidge.yml
+- import_playbook: biboumi.yml
+- import_playbook: navidrome.yml

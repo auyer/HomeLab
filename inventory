@@ -1,8 +1,0 @@
-[prosody]
-10.255.2.27 ansible_connection=ssh ansible_user=root
-
-[coturn]
-10.255.2.28 ansible_connection=ssh ansible_user=root
-
-[pi]
-10.255.0.100 ansible_connection=ssh ansible_user=auyer

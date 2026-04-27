@@ -1,0 +1,7 @@
+# terraform OpenTofu
+terraform.tfstate
+terraform.tfvars
+.terraform*
+
+inventory
+group_vars
