@@ -1,0 +1,7 @@
+---
+- name: Deploy Angie reverse proxy
+  hosts: navidrome
+  become: true
+
+  roles:
+    - navidrome
