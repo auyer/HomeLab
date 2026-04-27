@@ -1,0 +1,35 @@
+---
+
+- name: Download Navidrome .deb package
+  ansible.builtin.get_url:
+    url: "https://github.com/navidrome/navidrome/releases/download/v{{ navidrome_version }}/navidrome_{{ navidrome_version }}_{{ navidrome_os_arch }}.deb"
+    dest: "{{ navidrome_temp_deb }}"
+    mode: '0644'
+
+- name: Install Navidrome package (resolving dependencies)
+  ansible.builtin.apt:
+    deb: "{{ navidrome_temp_deb }}"
+    state: present
+
+- name: Ensure configuration directory exists
+  ansible.builtin.file:
+    path: "{{ navidrome_config_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Deploy Navidrome configuration
+  ansible.builtin.template:
+    src: navidrome.toml
+    dest: "{{ navidrome_config_file }}"
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart navidrome
+
+- name: Ensure Navidrome service is enabled and started
+  ansible.builtin.systemd:
+    name: navidrome
+    enabled: yes
+    state: started

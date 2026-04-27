@@ -1,0 +1,12 @@
+---
+
+navidrome_version: "0.61.2"
+navidrome_os_arch: "linux_amd64"
+
+# Path to the downloaded deb file on the target machine
+navidrome_temp_deb: "/tmp/navidrome_{{ navidrome_version }}_{{ navidrome_os_arch }}.deb"
+
+# Configuration
+navidrome_music_folder: "/media/Music"
+navidrome_config_dir: "/etc/navidrome"
+navidrome_config_file: "{{ navidrome_config_dir }}/navidrome.toml"

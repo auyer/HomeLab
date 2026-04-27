@@ -1,0 +1,9 @@
+# {{ ansible_managed }}
+
+# Main configuration
+MusicFolder = "{{ navidrome_music_folder }}"
+
+# You can add more options here as needed, for example:
+# LogLevel = "info"
+# Port = 4533
+TranscodingCacheSize = '150MiB'
