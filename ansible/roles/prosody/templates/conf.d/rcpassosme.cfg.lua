@@ -33,19 +33,19 @@ VirtualHost("{{ conf_settings.chat_hostname }}")
 	}
 
 
-	http_external_url = "https://{{ conf_settings.chat_hostname }}/"
+	http_external_url = "https://{{ conf_settings.http_external_url }}/"
 
 	{% if prosody_invite_registration %}
 	invites_page = "https://{{ conf_settings.chat_hostname }}/invite?{invite.token}"
 	invites_page_template_dir = "/var/www/invites"
-	allow_user_invites = true
-	invite_expiry = 86400 * 7
 
 	http_paths = {
 		invites_page = "/invite";
 		invites_register_web = "/register";
 	}
+
 	allow_registration = true
+	allow_user_invites = true
 	registration_invite_only = true
 	invite_expiry = 86400 * 7
 	site_name = "{{ prosody_service_name }}"
@@ -65,7 +65,6 @@ VirtualHost("{{ conf_settings.chat_hostname }}")
 	conversejs_description = "{{ prosody_service_name }}"
 	{% endif %}
 
-	-- http_external_url = "https://www.{{ conf_settings.chat_hostname }}/"
 Component("g.{{ conf_settings.chat_hostname }}")("muc")
 	modules_enabled = {
 		"muc_mam",
@@ -84,7 +83,7 @@ Component("share.{{ conf_settings.chat_hostname }}")("http_file_share")
 	-- Change the Limit to 100MB:
 	-- http_file_share_size_limit = 1024 * 1024 * 100
 	-- http_file_share_expires_after = "2 weeks"
-	http_external_url = "https://share.{{ conf_settings.chat_hostname }}:5281/"
+	http_external_url = "https://share.{{ conf_settings.http_external_url }}/"
 
 	-- here you see how we can manipulate the path:
 	http_paths = {
@@ -118,7 +117,7 @@ Component "pubsub.{{ conf_settings.chat_hostname }}" "pubsub"
         "pubsub_eventsource",
     }
 
-   -- http_external_url = "https://{{ conf_settings.chat_hostname }}/"
+   -- http_external_url = "{{ conf_settings.http_external_url }}/"
    -- default_admin_affiliation = "owner"
    pubsub_serverinfo_publish_user_count = true
    admins = {{ admin_addresses | to_json | replace('[', '{') | replace(']', '}') }}

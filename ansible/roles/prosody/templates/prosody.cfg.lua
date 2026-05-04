@@ -114,6 +114,7 @@ consider_websocket_secure = true
 ports = { 5222, 5269, 80 }
 ssl_ports = { 443, 5223 }
 ssl_ssl = { verify = { "peer", "client_once" } }
+-- legacy_ssl_ports = {5223}
 
 -- These modules are auto-loaded, but should you want
 -- to disable them then uncomment them here:
@@ -262,6 +263,77 @@ contact_info = {
 		abuse = {{ abuse_addresses | to_json | replace('[', '{') | replace(']', '}') }};
 		admin = {{ admin_addresses | to_json | replace('[', '{') | replace(']', '}') }};
 }
+
+
+site_apps = {
+	{
+		name = "Conversations";
+		text = [[Conversations é o cliente XMPP client tradicional para Android.]];
+		image = "https://upload.wikimedia.org/wikipedia/commons/c/cc/Conversations_%28Instant_Messenger%29_Logo.svg";
+		link = "https://play.google.com/store/apps/details?id=eu.siacs.conversations";
+		platforms = { "Android" };
+		supports_preauth_uri = true;
+		magic_link_format = "{app.link!}&referrer={invite.uri}";
+		download = {
+			buttons = {
+				{
+					image = "https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png";
+					url = "https://play.google.com/store/apps/details?id=eu.siacs.conversations";
+				};
+			};
+		};
+	};
+	{
+		name = "Monocles";
+		text = [[Baseado no Conversations, mas turbinado com Stories, Feeds, Stickers e outros recursos]];
+		image = "https://f-droid.org/repo/de.monocles.chat/en-US/icon_By_09N3UjlWwjECiMxE_5R5ZRY1t9ApwJ3c82_GRZW8=.png";
+		link = "https://f-droid.org/pt_BR/packages/de.monocles.chat/";
+		platforms = { "Android" };
+		supports_preauth_uri = true;
+		magic_link_format = "{app.link!}&referrer={invite.uri}";
+		download = {
+			buttons = {
+				{
+					image = "https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png";
+					url = "https://f-droid.org/pt_BR/packages/de.monocles.chat/";
+				};
+			};
+		};
+	};
+	{
+		name  = "Gajim";
+		text  = [[O melhor cliente cross-plataforma desktop]];
+		image = "https://upload.wikimedia.org/wikipedia/commons/8/87/Gajim.svg";
+		link  = "https://gajim.org/";
+		platforms = { "Windows", "Linux", "macOS" };
+		download = {
+			buttons = {
+				{
+					text = "Download Gajim";
+					url = "https://gajim.org/download/";
+					target = "_blank";
+				};
+			};
+		};
+	};
+	{
+		name  = "Monal";
+		text  = [[Aplicativo referência em iOS]];
+		image = "https://raw.githubusercontent.com/monal-im/Monal/f88d219d38aada7654b59ba40e9766bb2722b961/Art/monal.svg";
+		link  = "https://monal-im.org/";
+		platforms = { "iOS" };
+		supports_preauth_uri = true;
+		download = {
+			buttons = {
+				{
+					image = "https://toolbox.marketingtools.apple.com/api/v2/badges/download-on-the-app-store/black/en-us?releaseDate=1245024000";
+					url = "https://apps.apple.com/app/id317711500";
+					target = "_blank";
+				};
+			};
+		};
+	};
+};
 
 ------ Additional config files ------
 -- For organizational purposes you may prefer to add VirtualHost and

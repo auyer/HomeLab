@@ -78,17 +78,3 @@
     - Check prosody configuration
     - Restart prosody
 
-# # TODO: set at template too
-# - name: Deploy Prosody conf.d configurations
-#   ansible.builtin.copy:
-#     src: conf.d/
-#     dest: /etc/prosody/conf.d/
-#     owner: root
-#     group: root
-#     mode: "0644"
-#     directory_mode: "0755"
-#   notify:
-#     - Check prosody configuration
-#     - Restart prosody
-
-

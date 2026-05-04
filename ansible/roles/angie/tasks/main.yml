@@ -38,7 +38,7 @@
 
 - name: Deploy main Angie configuration
   ansible.builtin.template:
-    src: angie.conf.j2
+    src: angie.conf
     dest: /etc/angie/angie.conf
     owner: angie
     group: angie
@@ -61,36 +61,26 @@
 
 - name: Deploy templated Angie conf.d configurations
   ansible.builtin.template:
-    src: "conf.d/{{ item | basename }}"
-    dest: "/etc/angie/conf.d/{{ item | basename | regex_replace('\\.j2$', '') }}"
+    # src: "conf.d/{{ item | basename }}"
+    src: "{{ item }}"
+    dest: "/etc/angie/conf.d/{{ item | basename }}"
     owner: angie
     group: angie
     mode: "0644"
-  with_fileglob: "conf.d/*.j2"
+  with_fileglob: "../templates/conf.d/*"
   notify:
     - Test Angie configuration
     - Reload Angie
 
-- name: Deploy static Angie stream.d configurations
-  ansible.builtin.copy:
-    src: stream.d/
-    dest: /etc/angie/stream.d/
-    owner: angie
-    group: angie
-    mode: "0644"
-    directory_mode: "0755"
-  notify:
-    - Test Angie configuration
-    - Reload Angie
 
 - name: Deploy templated Angie stream.d configurations
   ansible.builtin.template:
-    src: "stream.d/{{ item | basename }}"
-    dest: "/etc/angie/stream.d/{{ item | basename | regex_replace('\\.j2$', '') }}"
+    src: "{{ item }}"
+    dest: "/etc/angie/stream.d/{{ item | basename }}"
     owner: angie
     group: angie
     mode: "0644"
-  with_fileglob: "stream.d/*.j2"
+  with_fileglob: "../templates/stream.d/*"
   notify:
     - Test Angie configuration
     - Reload Angie

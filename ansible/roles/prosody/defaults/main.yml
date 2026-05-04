@@ -23,6 +23,7 @@ prosody_configs:
     chat_hostname: "chat.example.tld"
     base_hostname: "example.tld"
     unified_push_secret: ""
+    http_external_url: "chat.example.tld:5281"
 
 prosody_feeds: []
 
