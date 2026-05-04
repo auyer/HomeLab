@@ -1,10 +1,12 @@
 ---
 # Prosody server variables
+prosody_service_name: "Chat RCPASSOS"
 prosody_trusted_proxies: "127.0.0.1, ::1"
 prosody_db: "sqlite"
 #prosody_db_password: ""
 #prosody_db_host: ""
 prosody_invite_registration: true
+prosody_conversejs: true
 prosody_matrix_bridge_enabled: true
 prosody_matrix_bridge_token: ""
 prosody_admins: { "admin@example.tld" }
@@ -38,6 +40,7 @@ prosody_community_modules:
   - mod_privilege
   - mod_throttle_presence
   - mod_http_libjs
+  - mod_conversejs
 
 prosody_additional_debian_packages:
   - prosody

@@ -75,7 +75,7 @@ modules_enabled = {
 		"invites_register_web";
 		"invites_api";
 		"register_apps";
-		"mod_http_libjs";
+		"http_libjs";
 		"watchregistrations"; -- Alert admins of registrations
 		{% endif %}
 

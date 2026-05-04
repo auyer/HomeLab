@@ -1,4 +1,3 @@
--- Section for localhost
 local _privileges = {
 	roster = "both",
 	message = "outgoing",
@@ -28,6 +27,9 @@ VirtualHost("{{ conf_settings.chat_hostname }}")
     "invites_register";
     "invites_register_web";
 		{% endif %}
+		{% if prosody_conversejs %}
+		"conversejs";
+		{% endif %}
 	}
 
 
@@ -46,10 +48,21 @@ VirtualHost("{{ conf_settings.chat_hostname }}")
 	allow_registration = true
 	registration_invite_only = true
 	invite_expiry = 86400 * 7
-	site_name = "{{ conf_settings.chat_hostname }}"
+	site_name = "{{ prosody_service_name }}"
 
 	registration_notification = "User $username just registered on $host"
 	registration_watchers = {{ admin_addresses | to_json | replace('[', '{') | replace(']', '}') }};
+	{% endif %}
+
+
+	{% if prosody_conversejs %}
+	conversejs_tags = {
+        -- Load libsignal-protocol.js for OMEMO support (GPLv3; be aware of licence implications)
+        [[<script src="https://cdn.conversejs.org/3rdparty/libsignal-protocol.min.js"></script>]];
+	}
+	conversejs_name = "{{ prosody_service_name }}"
+  conversejs_short_name = "{{ prosody_service_name }}"
+	conversejs_description = "{{ prosody_service_name }}"
 	{% endif %}
 
 	-- http_external_url = "https://www.{{ conf_settings.chat_hostname }}/"
