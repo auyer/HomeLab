@@ -57,12 +57,10 @@ modules_enabled = {
 	-- Nice to have
 		"account_activity"; -- Record time when an account was last used
 		"cloud_notify";
-            	"cloud_notify_extensions";
-	    	"unified_push";
+    "cloud_notify_extensions";
+	  "unified_push";
 		"csi_simple"; -- Simple but effective traffic optimizations for mobile devices
-		"invites"; -- Create and manage invites
-		"invites_adhoc"; -- Allow admins/users to create invitations via their client
-		"invites_register"; -- Allows invited users to create accounts
+	  "throttle_presence";
 		"ping"; -- Replies to XMPP pings with pongs
 		"register"; -- Allow users to register on this server using a client and change passwords
 		"time"; -- Let others know the time here on this server
@@ -70,6 +68,16 @@ modules_enabled = {
 		"version"; -- Replies to server version requests
 		"mam"; -- Store recent messages to allow multi-device synchronization
 		"turn_external"; -- Provide external STUN/TURN service for e.g. audio/video calls
+		{% if prosody_invite_registration %}
+		"invites"; -- Create and manage invites
+		"invites_adhoc"; -- Allow admins/users to create invitations via their client
+		"invites_register"; -- Allows invited users to create accounts
+		"invites_register_web";
+		"invites_api";
+		"register_apps";
+		"mod_http_libjs";
+		"watchregistrations"; -- Alert admins of registrations
+		{% endif %}
 
 	-- Admin interfaces
 		"admin_adhoc"; -- Allows administration via an XMPP client that supports ad-hoc commands
@@ -91,7 +99,6 @@ modules_enabled = {
 		"s2s_bidi"; -- Bi-directional server-to-server (XEP-0288)
 		-- "server_contact_info"; -- Publish contact information for this service
 		"tombstones"; -- Prevent registration of deleted accounts
-		"watchregistrations"; -- Alert admins of registrations
 		"welcome"; -- Welcome users who register accounts
 	  "privilege"; -- for roster sync and 'legacy carbons'
 }
@@ -176,7 +183,9 @@ authentication = "internal_hashed"
 -- lua-dbi-sqlite3, lua-dbi-mysql or lua-dbi-postgresql packages to work)
 
 -- For the "sql" backend, you can uncomment *one* of the below to configure:
--- sql = { driver = "SQLite3", database = "prosody.sqlite" } -- Default. 'database' is the filename.
+{% if prosody_db == 'sqlite' %}
+sql = { driver = "SQLite3", database = "prosody.sqlite" } -- Default. 'database' is the filename.
+{% endif %}
 --sql = { driver = "MySQL", database = "prosody", username = "prosody", password = "secret", host = "localhost" }
 {% if prosody_db == 'postgres' %}
 sql = { driver = "PostgreSQL", database = "prosody", username = "prosody",

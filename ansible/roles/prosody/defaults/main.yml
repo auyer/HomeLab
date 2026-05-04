@@ -1,9 +1,10 @@
 ---
 # Prosody server variables
 prosody_trusted_proxies: "127.0.0.1, ::1"
-prosody_db_password: ""
-prosody_db_host: ""
-prosody_db: "postgres"
+prosody_db: "sqlite"
+#prosody_db_password: ""
+#prosody_db_host: ""
+prosody_invite_registration: true
 prosody_matrix_bridge_enabled: true
 prosody_matrix_bridge_token: ""
 prosody_admins: { "admin@example.tld" }
@@ -21,24 +22,31 @@ prosody_configs:
     base_hostname: "example.tld"
     unified_push_secret: ""
 
+prosody_feeds: []
+
 # Default variables for the prosody role (user-overridable)
 prosody_community_modules:
-  - cloud_notify
-  - cloud_notify_extensions
-  - unified_push
-  - csi_simple
-  - pubsub_serverinfo
-  - pubsub_feeds
-  - pubsub_get
-  - pubsub_eventsource
+  - mod_cloud_notify
+  - mod_cloud_notify_extensions
+  - mkd_unified_push
+  - mod_csi_simple
+  - mod_pubsub_serverinfo
+  - mod_pubsub_feeds
+  - mod_pubsub_get
+  - mod_pubsub_eventsource
   - mod_invites_register_web
   - mod_privilege
+  - mod_throttle_presence
+  - mod_http_libjs
 
 prosody_additional_debian_packages:
   - prosody
+  - sqlite3
   - lua-dbi-postgresql
   - lua-unbound
   - lua-bitop
   - luarocks
   - libjs-bootstrap4
   - libjs-jquery
+
+
