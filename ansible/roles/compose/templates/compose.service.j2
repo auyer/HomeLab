@@ -1,0 +1,26 @@
+# {{ ansible_managed }}
+[Unit]
+Description=Compose stack: {{ compose_project_dest | basename }}
+{% if compose_engine == 'docker' %}
+Requires=docker.service
+After=docker.service
+{% else %}
+After=network-online.target
+{% endif %}
+Documentation=https://docs.docker.com/compose/
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory={{ compose_project_dest }}
+{% if compose_engine == 'docker' %}
+ExecStart=docker compose up --detach --remove-orphans
+ExecStop=docker compose down
+{% else %}
+ExecStart=podman-compose up --detach
+ExecStop=podman-compose down
+{% endif %}
+ExecReload=docker compose restart
+
+[Install]
+WantedBy=multi-user.target

@@ -1,13 +1,9 @@
 ---
 - name: Restart compose project
-  when: compose_engine == 'docker'
-  community.docker.docker_compose_v2:
-    project_src: "{{ compose_project_dest }}"
+  ansible.builtin.systemd:
+    name: compose-{{ compose_project_dest | basename }}
     state: restarted
 
-- name: Restart compose project
-  when: compose_engine == 'podman'
-  ansible.builtin.command:
-    chdir: "{{ compose_project_dest }}"
-    cmd: podman-compose restart
-  changed_when: true
+- name: Reload systemd compose unit
+  ansible.builtin.systemd:
+    daemon_reload: true

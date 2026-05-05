@@ -45,6 +45,17 @@
     group: root
     mode: "0755"
 
+- name: Create additional folders for bind mounts
+  when: additional_folders | length > 0
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ additional_folders_owner | split(':') | first | default(omit) }}"
+    group: "{{ additional_folders_owner | split(':') | last | default(omit) }}"
+    mode: "0755"
+    recurse: yes
+  loop: "{{ additional_folders }}"
+
 - name: Discover Jinja2 template files in project source
   delegate_to: localhost
   run_once: true
@@ -85,20 +96,20 @@
   loop: "{{ _compose_templates.files }}"
   notify: Restart compose project
 
-- name: Start compose services (Docker)
-  when: compose_engine == 'docker'
-  community.docker.docker_compose_v2:
-    project_src: "{{ compose_project_dest }}"
-    state: present
-    pull: "{{ compose_pull }}"
-    build: "{{ compose_build }}"
-    recreate: "{{ compose_recreate }}"
-    remove_orphans: "{{ compose_remove_orphans }}"
+- name: Deploy systemd compose service unit
+  ansible.builtin.template:
+    src: compose.service.j2
+    dest: /etc/systemd/system/compose-{{ compose_project_dest | basename }}.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload systemd compose unit
+    - Restart compose project
 
-- name: Start compose services (Podman)
-  when: compose_engine == 'podman'
-  ansible.builtin.command:
-    chdir: "{{ compose_project_dest }}"
-    cmd: podman-compose up --detach
-  register: _podman_up
-  changed_when: "'up-to-date' not in _podman_up.stdout"
+- name: Enable and start compose systemd service
+  ansible.builtin.systemd:
+    name: compose-{{ compose_project_dest | basename }}
+    state: started
+    enabled: true
+    daemon_reload: true
