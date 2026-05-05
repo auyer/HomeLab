@@ -1,7 +1,7 @@
-resource "proxmox_lxc" "loki" {
+resource "proxmox_lxc" "grafana" {
   target_node  = var.proxmox_node
-  vmid         = 1030
-  hostname     = "loki"
+  vmid         = 1025
+  hostname     = "grafana"
   ostemplate   = data.external.debian_template.result.path
   unprivileged = true
   onboot       = true
@@ -21,7 +21,7 @@ resource "proxmox_lxc" "loki" {
   network {
     name     = "eth0"
     bridge   = var.nic_name
-    ip       = "10.255.1.30/22"
+    ip       = "10.255.1.25/22"
     gw       = "10.255.0.1"
     firewall = true
   }

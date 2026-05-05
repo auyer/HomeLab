@@ -1,0 +1,14 @@
+---
+- name: Deploy grafana / Grafana Alloy via Docker Compose
+  hosts: grafana
+  become: true
+  roles:
+    - role: compose
+      vars:
+        compose_engine: docker
+        compose_project_src: "{{ inventory_dir }}/../grafana"
+        compose_project_dest: /opt/grafana
+        additional_folders_owner: "1000:1000"
+        additional_folders:
+          - "/var/prometheus"
+          - "/var/grafana"

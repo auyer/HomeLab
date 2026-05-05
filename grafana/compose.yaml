@@ -1,0 +1,43 @@
+services:
+  prometheus:
+    image: docker.io/prom/prometheus:latest
+    restart: unless-stopped
+    container_name: prometheus
+    user: "${UID:-1000}:${GID:-1000}"
+    env_file:
+      - ./prometheus/.env
+    ports:
+      - '9090:9090'
+    volumes:
+      - /var/prometheus:/prometheus:u
+      - ./prometheus/config:/etc/prometheus:z
+  grafana:
+    image: docker.io/grafana/grafana:latest
+    restart: unless-stopped
+    container_name: grafana
+    user: "${UID:-1000}:${GID:-1000}"
+    env_file:
+      - ./grafana/.env
+    ports:
+      - '3000:3000'
+    volumes:
+      - /var/grafana:/var/lib/grafana:z
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:z
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:z
+    depends_on:
+      - prometheus
+
+  unpoller:
+    image: ghcr.io/unpoller/unpoller:latest
+    restart: unless-stopped
+    container_name: unpoller
+    env_file:
+      - ./unpoller/.env
+    ports:
+      - '9130:9130'
+
+  watchtower:
+    image: docker.io/nickfedor/watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
