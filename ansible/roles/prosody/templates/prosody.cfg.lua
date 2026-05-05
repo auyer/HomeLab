@@ -56,6 +56,7 @@ modules_enabled = {
 
 	-- Nice to have
 		"account_activity"; -- Record time when an account was last used
+	  "measure_active_users";
 		"cloud_notify";
     "cloud_notify_extensions";
 	  "unified_push";

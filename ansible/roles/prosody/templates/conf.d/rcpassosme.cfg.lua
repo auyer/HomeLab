@@ -18,6 +18,7 @@ VirtualHost("{{ conf_settings.chat_hostname }}")
 		{ "matrix.{{ conf_settings.chat_hostname }}", "Matrix Bridge" },
 		{ "irc.{{ conf_settings.base_hostname }}", "biboumi IRC Bridge" },
 		{ "notify.{{ conf_settings.base_hostname }}", "Unified push Notifications" },
+		{ "pubsub.{{ conf_settings.chat_hostname }}", "PubSub Service" },
 	}
 	modules_enabled = {
 	 	"pubsub_serverinfo";
@@ -31,6 +32,9 @@ VirtualHost("{{ conf_settings.chat_hostname }}")
 		"conversejs";
 		{% endif %}
 	}
+
+	pubsub_serverinfo_service = "pubsub.{{ conf_settings.chat_hostname }}"
+	pubsub_serverinfo_publish_user_count = true
 
 
 	http_external_url = "https://{{ conf_settings.http_external_url }}/"
@@ -115,14 +119,25 @@ Component "pubsub.{{ conf_settings.chat_hostname }}" "pubsub"
         "pubsub_feeds",
         "pubsub_get",
         "pubsub_eventsource",
+			  "pubsub_text_interface",
     }
 
    -- http_external_url = "{{ conf_settings.http_external_url }}/"
    -- default_admin_affiliation = "owner"
-   pubsub_serverinfo_publish_user_count = true
-   admins = {{ admin_addresses | to_json | replace('[', '{') | replace(']', '}') }}
+   -- pubsub_serverinfo publishes from the domain itself, so domain must be admin
+   admins = { "{{ conf_settings.chat_hostname }}" }
 
-   feeds = {{ prosody_feeds | to_json | replace('[', '{') | replace(']', '}') }}
+   feeds = {
+{% if prosody_feeds is mapping %}
+{% for name, url in prosody_feeds.items() %}
+        {{ name }} = "{{ url }}";
+{% endfor %}
+{% else %}
+{% for url in prosody_feeds %}
+        "{{ url }}";
+{% endfor %}
+{% endif %}
+   }
 
 
    feed_pull_interval_seconds = 900
