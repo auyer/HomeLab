@@ -1,0 +1,10 @@
+---
+- name: Deploy Loki / Grafana Alloy via Docker Compose
+  hosts: loki
+  become: true
+  roles:
+    - role: compose
+      vars:
+        compose_engine: docker
+        compose_project_src: "{{ inventory_dir }}/../loki"
+        compose_project_dest: /opt/loki

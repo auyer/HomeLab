@@ -1,0 +1,13 @@
+---
+- name: Restart compose project
+  when: compose_engine == 'docker'
+  community.docker.docker_compose_v2:
+    project_src: "{{ compose_project_dest }}"
+    state: restarted
+
+- name: Restart compose project
+  when: compose_engine == 'podman'
+  ansible.builtin.command:
+    chdir: "{{ compose_project_dest }}"
+    cmd: podman-compose restart
+  changed_when: true

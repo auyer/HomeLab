@@ -1,0 +1,8 @@
+---
+compose_engine: docker
+compose_project_src: "{{ inventory_dir }}/files/compose"
+compose_project_dest: /opt/compose
+compose_pull: policy
+compose_build: policy
+compose_recreate: auto
+compose_remove_orphans: false

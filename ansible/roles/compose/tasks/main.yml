@@ -1,0 +1,104 @@
+---
+- name: Validate compose engine choice
+  ansible.builtin.fail:
+    msg: "compose_engine must be 'docker' or 'podman', got '{{ compose_engine }}'"
+  when: compose_engine not in ['docker', 'podman']
+
+- name: Resolve real path of compose project source
+  delegate_to: localhost
+  run_once: true
+  become: false
+  ansible.builtin.command: realpath "{{ compose_project_src }}"
+  register: _compose_src_real
+  changed_when: false
+
+- name: Install Docker packages
+  when: compose_engine == 'docker'
+  ansible.builtin.apt:
+    name:
+      - docker.io
+      - docker-compose
+    state: present
+    update_cache: true
+
+- name: Install Podman packages
+  when: compose_engine == 'podman'
+  ansible.builtin.apt:
+    name:
+      - podman
+      - podman-compose
+    state: present
+    update_cache: true
+
+- name: Ensure Docker service is running
+  when: compose_engine == 'docker'
+  ansible.builtin.systemd:
+    name: docker
+    state: started
+    enabled: true
+
+- name: Ensure destination directory exists
+  ansible.builtin.file:
+    path: "{{ compose_project_dest }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Discover Jinja2 template files in project source
+  delegate_to: localhost
+  run_once: true
+  become: false
+  ansible.builtin.find:
+    paths: "{{ _compose_src_real.stdout }}"
+    patterns: "*.j2"
+    recurse: true
+    file_type: file
+    excludes: ".git"
+  register: _compose_templates
+
+- name: Copy compose project files to target
+  ansible.builtin.copy:
+    src: "{{ _compose_src_real.stdout }}/"
+    dest: "{{ compose_project_dest }}"
+    owner: root
+    group: root
+    mode: preserve
+
+# Clean up raw .j2 files — they will be replaced by their rendered counterparts
+- name: Remove raw .j2 template files from target
+  ansible.builtin.file:
+    path: "{{ compose_project_dest }}/{{ item.path | replace(_compose_src_real.stdout + '/', '') }}"
+    state: absent
+  loop: "{{ _compose_templates.files }}"
+  when: _compose_templates.files | length > 0
+  changed_when: false
+
+- name: Render Jinja2 templates to destination
+  when: _compose_templates.files | length > 0
+  ansible.builtin.template:
+    src: "{{ item.path }}"
+    dest: "{{ compose_project_dest }}/{{ item.path | replace(_compose_src_real.stdout + '/', '') | regex_replace('\\.j2$', '') }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop: "{{ _compose_templates.files }}"
+  notify: Restart compose project
+
+- name: Start compose services (Docker)
+  when: compose_engine == 'docker'
+  community.docker.docker_compose_v2:
+    project_src: "{{ compose_project_dest }}"
+    state: present
+    pull: "{{ compose_pull }}"
+    build: "{{ compose_build }}"
+    recreate: "{{ compose_recreate }}"
+    remove_orphans: "{{ compose_remove_orphans }}"
+
+- name: Start compose services (Podman)
+  when: compose_engine == 'podman'
+  ansible.builtin.command:
+    chdir: "{{ compose_project_dest }}"
+    cmd: podman-compose up --detach
+  register: _podman_up
+  changed_when: "'up-to-date' not in _podman_up.stdout"
