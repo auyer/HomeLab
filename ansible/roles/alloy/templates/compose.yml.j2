@@ -16,3 +16,9 @@ services:
       - {{ file.path }}:{{ file.path }}:ro
 {%- endfor %}
 {% endif %}
+{% if enable_systemd_logs %}
+
+      - /var/log/journal:/var/log/journal:ro
+      - /run/log/journal:/run/log/journal:ro
+      - /etc/machine-id:/etc/machine-id:ro
+{% endif %}

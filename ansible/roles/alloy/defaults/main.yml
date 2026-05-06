@@ -5,8 +5,15 @@ external_labels: {}
 #    cluster: primary
 #    hostname: machine-name
 local_log_files: []
+# example:
+# local_log_files:
+#   - path: "/var/log/prosody/prosody.log"
+#     job: "prosody"
+#     service_name: "prosody"
 enable_docker_sock: false
 config_template: "docker" # docker,log-file
 service_name: "alloy"
 log_instance_name: ""
 enable_port: false
+enable_systemd_logs: false
+systemd_logs_service: []

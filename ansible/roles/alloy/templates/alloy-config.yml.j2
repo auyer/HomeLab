@@ -1,26 +1,26 @@
 {% if config_template == "docker" %}
 
 discovery.docker "docker_scrape" {
-	host             = "unix:///var/run/docker.sock"
-	refresh_interval = "5s"
+  host             = "unix:///var/run/docker.sock"
+  refresh_interval = "5s"
 }
 
 discovery.relabel "docker_scrape" {
-	targets = []
+  targets = []
 
-	rule {
-		source_labels = ["__meta_docker_container_name"]
-		regex         = "/(.*)"
-		target_label  = "container"
-	}
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    target_label  = "container"
+  }
 }
 
 loki.source.docker "docker_scrape" {
-	host             = "unix:///var/run/docker.sock"
-	targets          = discovery.docker.docker_scrape.targets
+  host             = "unix:///var/run/docker.sock"
+  targets          = discovery.docker.docker_scrape.targets
   forward_to       = [loki.write.loki.receiver]
-	relabel_rules    = discovery.relabel.docker_scrape.rules
-	refresh_interval = "5s"
+  relabel_rules    = discovery.relabel.docker_scrape.rules
+  refresh_interval = "5s"
 }
 
 {% endif %}
@@ -32,13 +32,13 @@ local.file_match "local_logs" {
   path_targets = [
 {%- for file in local_log_files %}
     { 
-			"__path__" = "{{ file.path }}",
-			"job"          = "{{ file.job }}",
-      "service_name" = "{{ file.service_name }}"
-		}{% if not loop.last %},{% endif %}
+      "__path__" = "{{ file.path }}",
+      "job"          = "{{ file.job }}",
+      "service_name" = "{{ file.service_name }}",
+    }{% if not loop.last %},{% endif %}
 {%- endfor %}
   ]
-	sync_period = "5s"
+  sync_period = "5s"
 }
 
 loki.source.file "log_scrape" {
@@ -59,12 +59,31 @@ loki.relabel "add_labels" {
     replacement  = "{{ ansible_hostname | default('log-scraper') }}"
   }
 
-{% if service_name is defined %}
-  rule {
-    target_label = "service_name"
-    replacement  = "{{ service_name }}"
-  }
+}
+
 {% endif %}
+
+{% if enable_systemd_logs %}
+
+{%- for svc in systemd_logs_service %}
+loki.source.journal "journal_{{ svc.name }}" {
+    forward_to = [loki.relabel.systemd_labels.receiver]
+    matches    = "_SYSTEMD_UNIT={{ svc.service }}"
+    labels     = {
+        unit    = "{{ svc.service }}",
+        service_name = "{{ svc.name }}",
+    }
+}
+{% endfor %}
+
+loki.relabel "systemd_labels" {
+    forward_to = [loki.write.loki.receiver]
+
+    rule {
+        target_label = "job"
+        replacement  = "{{ ansible_hostname | default('log-scraper') }}"
+    }
+
 }
 
 {% endif %}
