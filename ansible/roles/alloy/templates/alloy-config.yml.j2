@@ -1,4 +1,4 @@
-{% if config_template == "docker" %}
+{% if enable_docker_sock %}
 
 discovery.docker "docker_scrape" {
   host             = "unix:///var/run/docker.sock"
@@ -26,7 +26,7 @@ loki.source.docker "docker_scrape" {
 {% endif %}
 
 
-{% if config_template == "log-file" %}
+{% if enable_logfile %}
 
 local.file_match "local_logs" {
   path_targets = [

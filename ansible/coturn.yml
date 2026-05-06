@@ -5,3 +5,16 @@
 
   roles:
     - coturn
+    - role: alloy
+      vars:
+        service_name: coturn
+        compose_engine: podman
+        log_instance_name: "coturn-server"
+        # external_labels:
+        #   env: "production"
+        #   region: "brazil"
+        enable_port: false 
+        enable_systemd_logs: true
+        systemd_logs_service:
+          - service: "coturn.service"
+            name: "coturn"

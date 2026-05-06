@@ -11,7 +11,7 @@ local_log_files: []
 #     job: "prosody"
 #     service_name: "prosody"
 enable_docker_sock: false
-config_template: "docker" # docker,log-file
+enable_logfile: false
 service_name: "alloy"
 log_instance_name: ""
 enable_port: false

@@ -12,7 +12,7 @@
           - path: "/var/log/prosody/prosody.log"
             job: "prosody"
             service_name: "prosody"
-        config_template: "log-file"
+        enable_logfile: true
         compose_engine: podman
         log_instance_name: "prosody-server"
         # external_labels:
