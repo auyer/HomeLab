@@ -1,0 +1,18 @@
+services:
+  alloy:
+    image: docker.io/grafana/alloy:latest
+    command:  run --server.http.listen-addr=0.0.0.0:12345 --storage.path=/var/lib/alloy/data /etc/alloy/config.alloy
+{% if enable_port %}
+    ports:
+      - 12345:12345
+{% endif %}
+    volumes:
+      - ./alloy-config.yml:/etc/alloy/config.alloy:ro
+{% if enable_docker_sock %}
+      - /var/run/docker.sock:/var/run/docker.sock
+{% endif %}
+{% if config_template == "log-file" %}
+{%- for file in local_log_files %}
+      - {{ file.path }}:{{ file.path }}:ro
+{%- endfor %}
+{% endif %}

@@ -1,0 +1,14 @@
+---
+- name: Compute alloy templates source path
+  ansible.builtin.set_fact:
+    _alloy_templates_src: "{{ role_path }}/templates"
+
+- name: Deploy Grafana Alloy via compose role
+  ansible.builtin.include_role:
+    name: compose
+    apply:
+      become: true
+  vars:
+    compose_project_src: "{{ _alloy_templates_src }}"
+    compose_project_dest: "/opt/alloy-{{ service_name }}"
+    compose_project_name: "alloy-{{ service_name }}"

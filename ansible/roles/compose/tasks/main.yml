@@ -9,8 +9,12 @@
   run_once: true
   become: false
   ansible.builtin.command: realpath "{{ compose_project_src }}"
-  register: _compose_src_real
+  register: _compose_src_raw
   changed_when: false
+
+- name: Share resolved source path with all hosts
+  ansible.builtin.set_fact:
+    _compose_src_real: "{{ hostvars[ansible_play_hosts[0]]['_compose_src_raw'] }}"
 
 - name: Install Docker packages
   when: compose_engine == 'docker'
@@ -99,7 +103,7 @@
 - name: Deploy systemd compose service unit
   ansible.builtin.template:
     src: compose.service.j2
-    dest: /etc/systemd/system/compose-{{ compose_project_dest | basename }}.service
+    dest: /etc/systemd/system/compose-{{ compose_project_name }}.service
     owner: root
     group: root
     mode: "0644"
@@ -109,7 +113,7 @@
 
 - name: Enable and start compose systemd service
   ansible.builtin.systemd:
-    name: compose-{{ compose_project_dest | basename }}
+    name: compose-{{ compose_project_name }}
     state: started
     enabled: true
     daemon_reload: true

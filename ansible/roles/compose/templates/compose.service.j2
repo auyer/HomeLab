@@ -1,6 +1,6 @@
 # {{ ansible_managed }}
 [Unit]
-Description=Compose stack: {{ compose_project_dest | basename }}
+Description=Compose stack: {{ compose_project_name }}
 {% if compose_engine == 'docker' %}
 Requires=docker.service
 After=docker.service

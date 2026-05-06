@@ -1,7 +1,7 @@
 ---
 - name: Restart compose project
   ansible.builtin.systemd:
-    name: compose-{{ compose_project_dest | basename }}
+    name: compose-{{ compose_project_name }}
     state: restarted
 
 - name: Reload systemd compose unit

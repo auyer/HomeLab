@@ -1,0 +1,12 @@
+loki_base_url: "http://loki:3100"
+external_labels: {}
+# example:
+# external_labels:
+#    cluster: primary
+#    hostname: machine-name
+local_log_files: []
+enable_docker_sock: false
+config_template: "docker" # docker,log-file
+service_name: "alloy"
+log_instance_name: ""
+enable_port: false
