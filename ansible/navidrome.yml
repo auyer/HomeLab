@@ -5,3 +5,13 @@
 
   roles:
     - navidrome
+    - role: alloy
+      vars:
+        service_name: navidrome
+        compose_engine: podman
+        log_instance_name: "navidrome-server"
+        enable_port: false
+        enable_systemd_logs: true
+        systemd_logs_service:
+          - service: "navidrome.service"
+            name: "navidrome"
