@@ -1,0 +1,21 @@
+---
+- name: Deploy forgejo-runner via Docker Compose
+  hosts: forgejo-runner
+  become: true
+  roles:
+    - role: compose
+      vars:
+        compose_engine: docker
+        compose_project_src: "{{ inventory_dir }}/../forgejo-runner"
+        compose_project_dest: /opt/forgejo-runner
+        additional_folders_owner: "1001:1001"
+        additional_folders:
+          - "/opt/forgejo-runner/data"
+    - role: alloy
+      vars:
+        service_name: forgejo_runner
+        compose_engine: docker
+        log_instance_name: "forgejo_runner"
+        enable_port: false
+        enable_docker_sock: true
+

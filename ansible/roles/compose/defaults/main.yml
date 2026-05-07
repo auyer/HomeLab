@@ -8,5 +8,4 @@ compose_recreate: auto
 compose_remove_orphans: false
 compose_project_name: "{{ compose_project_dest | basename }}"
 additional_folders: []
-additional_folders_owner: root
-additional_folders_group: root
+additional_folders_owner: root:root

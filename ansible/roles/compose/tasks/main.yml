@@ -52,11 +52,11 @@
 - name: Create additional folders for bind mounts
   when: additional_folders | length > 0
   ansible.builtin.file:
-    path: "{{ item }}"
+    path: "{{ item | split(':') | first }}"
     state: directory
-    owner: "{{ additional_folders_owner | split(':') | first | default(omit) }}"
-    group: "{{ additional_folders_owner | split(':') | last | default(omit) }}"
-    mode: "0755"
+    owner: "{{ (additional_folders_owner | split(':') | first) if additional_folders_owner is defined else omit }}"
+    group: "{{ (additional_folders_owner | split(':') | last) if additional_folders_owner is defined else omit }}"
+    mode: "{{ (':' in item) | ternary(item | split(':') | last, '0755') }}"
     recurse: yes
   loop: "{{ additional_folders }}"
 
