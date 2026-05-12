@@ -1,0 +1,19 @@
+services:
+  netbird-client:
+      container_name: netbird-client
+      hostname: 'routing-peer'
+      cap_add:
+          - NET_ADMIN
+          - SYS_ADMIN
+          - SYS_RESOURCE
+      devices:
+          # Required when using userspace mode or when kernel module is not available
+          - /dev/net/tun
+      network_mode: host
+      environment:
+          - NB_HOSTNAME='routing-peer'
+          - NB_SETUP_KEY="E2E24EA1-1678-4BB4-9024-E97977F81B87"
+          - NB_MANAGEMENT_URL=https://nb.rcpassos.me
+      volumes:
+          - /var/lib/netbird:/var/lib/netbird
+      image: docker.io/netbirdio/netbird:latest

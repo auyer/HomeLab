@@ -1,0 +1,12 @@
+---
+- name: Deploy netbird-client via Docker Compose
+  hosts: netbird.client
+  become: true
+  roles:
+    - role: compose
+      vars:
+        compose_engine: docker
+        compose_project_src: "{{ inventory_dir }}/../netbird-peer"
+        compose_project_dest: /opt/netbird
+        additional_folders:
+          - /var/lib/netbird

@@ -1,0 +1,17 @@
+---
+- name: Deploy netbird via Docker Compose
+  hosts: mg-outpost
+  become: true
+  roles:
+    - role: compose
+      vars:
+        compose_engine: docker
+        compose_project_src: "{{ inventory_dir }}/../netbird"
+        compose_project_dest: /opt/netbird
+        additional_folders_owner: "1000:1000"
+        additional_folders:
+          - /var/lib/netbird
+          - /etc/crowdsec
+          - /var/lib/crowdec/data
+          - "/var/certs/netbird"
+          - "/var/certs/letsencrypt:600"
