@@ -1,0 +1,30 @@
+concurrent = 10
+check_interval = 30
+shutdown_timeout = 300  # 5 minutes - required for draining machines
+
+[machine]
+  [machine.shutdown_drain]
+    enabled = true
+    concurrency = 5
+    max_retries = 3
+    retry_backoff = "5s"
+
+[[runners]]
+  name = "{{ runner_name }}"
+  url = "{{ gitlab_url }}"
+  executor = "docker"
+  request_concurrency = 4
+  token = "{{ gitlab_token }}"
+  # This block must come AFTER the keys above
+  [runners.feature_flags]
+    FF_USE_ADAPTIVE_REQUEST_CONCURRENCY = true
+
+  [runners.docker]
+    tls_verify = false
+    image = "debian:latest"
+    privileged = true
+    disable_entrypoint_overwrite = false
+    oom_kill_disable = false
+    disable_cache = false
+    volumes = ["/var/run/docker.sock:/var/run/docker.sock", "/cache"]
+    shm_size = 0
