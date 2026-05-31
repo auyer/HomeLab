@@ -1,3 +1,17 @@
 ---
 # Default variables for the angie role (user-overridable)
 xmpp_domain: "chat.example.com"
+
+# ACME (Let's Encrypt) integration via Angie's built-in ACME module
+# Uses DNS-01 challenge with Cloudflare API hook
+acme_enabled: true
+acme_email: ""           # Required: email for Let's Encrypt notifications
+acme_client_name: letsencrypt
+acme_client_path: /var/lib/angie/acme
+acme_resolver: 1.1.1.1 8.8.8.8
+acme_cloudflare_api_token: ""  # Required: Cloudflare API token with DNS:Edit permission
+
+# Subdomain site configs
+pihole_domain: ""
+pihole_port: 8010
+pihole_lan_domain: ""
