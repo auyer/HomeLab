@@ -1,6 +1,6 @@
 ---
 - name: Deploy Angie reverse proxy
-  hosts: proxy
+  hosts: pi
   become: true
 
   roles:

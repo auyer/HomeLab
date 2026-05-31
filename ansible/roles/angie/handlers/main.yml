@@ -8,3 +8,8 @@
   ansible.builtin.systemd:
     name: angie
     state: reloaded
+
+- name: Restart Angie
+  ansible.builtin.systemd:
+    name: angie
+    state: restarted
