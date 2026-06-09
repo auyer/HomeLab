@@ -1,0 +1,36 @@
+---
+- name: Validate container engine choice
+  ansible.builtin.fail:
+    msg: "container_engine must be 'docker' or 'podman', got '{{ container_engine }}'"
+  when: container_engine not in ['docker', 'podman']
+
+- name: Pull latest images for all running containers
+  ansible.builtin.shell: |
+    set -o pipefail
+    for img in $({{ container_engine }} ps --format '{{ '{{' }}.Image{{ '}}' }}' | sort -u); do
+      {{ container_engine }} pull "$img"
+    done
+  register: _pull
+  changed_when: "'Pull' in _pull.stdout or 'Downloaded' in _pull.stdout"
+
+- name: Update compose projects
+  when: container_compose_projects | length > 0
+  block:
+    - name: Pull images for compose projects
+      ansible.builtin.command: "{{ container_engine }} compose pull"
+      args:
+        chdir: "{{ item }}"
+      loop: "{{ container_compose_projects }}"
+      changed_when: true
+
+    - name: Restart compose projects with new images
+      ansible.builtin.command: "{{ container_engine }} compose up --detach --remove-orphans"
+      args:
+        chdir: "{{ item }}"
+      loop: "{{ container_compose_projects }}"
+      changed_when: true
+
+- name: Prune unused images
+  ansible.builtin.command: "{{ container_engine }} image prune --force"
+  changed_when: false
+  when: container_prune | bool

@@ -1,0 +1,7 @@
+---
+- name: Update apt packages on all hosts
+  hosts: all
+  gather_facts: true
+  become: true
+  roles:
+    - apt-upgrade

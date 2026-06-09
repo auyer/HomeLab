@@ -2,6 +2,7 @@
 terraform.tfstate
 terraform.tfvars
 .terraform*
+.env
 
 inventory
 group_vars
