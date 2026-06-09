@@ -1,0 +1,21 @@
+---
+- name: Deploy uptime-kuma via Podman Compose
+  hosts: uptime-kuma
+  become: true
+  roles:
+    - role: compose
+      vars:
+        compose_engine: podman
+        compose_project_src: "{{ inventory_dir }}/../appdata/uptime-kuma"
+        compose_project_dest: /opt/uptime-kuma
+        additional_folders_owner: "1001:1001"
+        additional_folders:
+          - "/opt/uptime-kuma/data"
+    - role: alloy
+      vars:
+        service_name: uptime_kuma
+        compose_engine: podman
+        log_instance_name: "uptime_kuma"
+        enable_port: false
+        enable_docker_sock: true
+
