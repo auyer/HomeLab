@@ -6,5 +6,5 @@
     - role: compose
       vars:
         compose_engine: docker
-        compose_project_src: "{{ inventory_dir }}/../gitlab_runner"
+        compose_project_src: "{{ inventory_dir }}/../appdata/gitlab_runner"
         compose_project_dest: /opt/gitlab_runner

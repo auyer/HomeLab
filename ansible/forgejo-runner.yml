@@ -6,7 +6,7 @@
     - role: compose
       vars:
         compose_engine: docker
-        compose_project_src: "{{ inventory_dir }}/../forgejo-runner"
+        compose_project_src: "{{ inventory_dir }}/../appdata/forgejo-runner"
         compose_project_dest: /opt/forgejo-runner
         additional_folders_owner: "1001:1001"
         additional_folders:
