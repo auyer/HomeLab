@@ -1,5 +1,6 @@
 ---
 # Default variables for the angie role (user-overridable)
+base_domain: "example.com"
 xmpp_domain: "chat.example.com"
 
 # ACME (Let's Encrypt) integration via Angie's built-in ACME module

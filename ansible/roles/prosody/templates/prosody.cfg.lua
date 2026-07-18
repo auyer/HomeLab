@@ -35,73 +35,72 @@ plugin_paths = { "/usr/local/lib/prosody/modules" }
 -- This is the list of modules Prosody will load on startup.
 -- Documentation for bundled modules can be found at: https://prosody.im/doc/modules
 modules_enabled = {
+    -- Generally required
+        "disco"; -- Service discovery
+        "roster"; -- Allow users to have a roster. Recommended ;)
+        "saslauth"; -- Authentication for clients and servers. Recommended if you want to log in.
+        "tls"; -- Add support for secure TLS on c2s/s2s connections
 
-	-- Generally required
-		"disco"; -- Service discovery
-		"roster"; -- Allow users to have a roster. Recommended ;)
-		"saslauth"; -- Authentication for clients and servers. Recommended if you want to log in.
-		"tls"; -- Add support for secure TLS on c2s/s2s connections
+    -- Not essential, but recommended
+        "blocklist"; -- Allow users to block communications with other users
+        "bookmarks"; -- Synchronise the list of open rooms between clients
+        "carbons"; -- Keep multiple online clients in sync
+        "dialback"; -- Support for verifying remote servers using DNS
+        "limits"; -- Enable bandwidth limiting for XMPP connections
+        "pep"; -- Allow users to store public and private data in their account
+        "private"; -- Legacy account storage mechanism (XEP-0049)
+        "smacks"; -- Stream management and resumption (XEP-0198)
+        "vcard4"; -- User profiles (stored in PEP)
+        "vcard_legacy"; -- Conversion between legacy vCard and PEP Avatar, vcard
 
-	-- Not essential, but recommended
-		"blocklist"; -- Allow users to block communications with other users
-		"bookmarks"; -- Synchronise the list of open rooms between clients
-		"carbons"; -- Keep multiple online clients in sync
-		"dialback"; -- Support for verifying remote servers using DNS
-		"limits"; -- Enable bandwidth limiting for XMPP connections
-		"pep"; -- Allow users to store public and private data in their account
-		"private"; -- Legacy account storage mechanism (XEP-0049)
-		"smacks"; -- Stream management and resumption (XEP-0198)
-		"vcard4"; -- User profiles (stored in PEP)
-		"vcard_legacy"; -- Conversion between legacy vCard and PEP Avatar, vcard
+    -- Nice to have
+        "account_activity"; -- Record time when an account was last used
+        "measure_active_users";
+        "cloud_notify";
+        "cloud_notify_extensions";
+        "unified_push";
+        "csi_simple"; -- Simple but effective traffic optimizations for mobile devices
+        "throttle_presence";
+        "ping"; -- Replies to XMPP pings with pongs
+        "register"; -- Allow users to register on this server using a client and change passwords
+        "time"; -- Let others know the time here on this server
+        "uptime"; -- Report how long server has been running
+        "version"; -- Replies to server version requests
+        "mam"; -- Store recent messages to allow multi-device synchronization
+        "turn_external"; -- Provide external STUN/TURN service for e.g. audio/video calls
+        {% if prosody_invite_registration %}
+        "invites"; -- Create and manage invites
+        "invites_adhoc"; -- Allow admins/users to create invitations via their client
+        "invites_register"; -- Allows invited users to create accounts
+        "invites_register_web";
+        "invites_api";
+        "register_apps";
+        "http_libjs";
+        "watchregistrations"; -- Alert admins of registrations
+        {% endif %}
 
-	-- Nice to have
-		"account_activity"; -- Record time when an account was last used
-	  "measure_active_users";
-		"cloud_notify";
-    "cloud_notify_extensions";
-	  "unified_push";
-		"csi_simple"; -- Simple but effective traffic optimizations for mobile devices
-	  "throttle_presence";
-		"ping"; -- Replies to XMPP pings with pongs
-		"register"; -- Allow users to register on this server using a client and change passwords
-		"time"; -- Let others know the time here on this server
-		"uptime"; -- Report how long server has been running
-		"version"; -- Replies to server version requests
-		"mam"; -- Store recent messages to allow multi-device synchronization
-		"turn_external"; -- Provide external STUN/TURN service for e.g. audio/video calls
-		{% if prosody_invite_registration %}
-		"invites"; -- Create and manage invites
-		"invites_adhoc"; -- Allow admins/users to create invitations via their client
-		"invites_register"; -- Allows invited users to create accounts
-		"invites_register_web";
-		"invites_api";
-		"register_apps";
-		"http_libjs";
-		"watchregistrations"; -- Alert admins of registrations
-		{% endif %}
+    -- Admin interfaces
+        "admin_adhoc"; -- Allows administration via an XMPP client that supports ad-hoc commands
+        "admin_shell"; -- Allow secure administration via 'prosodyctl shell'
 
-	-- Admin interfaces
-		"admin_adhoc"; -- Allows administration via an XMPP client that supports ad-hoc commands
-		"admin_shell"; -- Allow secure administration via 'prosodyctl shell'
+    -- HTTP modules
+        "http";
+        "bosh"; -- Enable BOSH clients, aka "Jabber over HTTP"
+        "http_openmetrics"; -- for exposing metrics to stats collectors
+        "websocket"; -- XMPP over WebSockets
 
-	-- HTTP modules
-	 	"http";
-		"bosh"; -- Enable BOSH clients, aka "Jabber over HTTP"
-		"http_openmetrics"; -- for exposing metrics to stats collectors
-		"websocket"; -- XMPP over WebSockets
-
-	-- Other specific functionality
-		"posix"; -- POSIX functionality, sends server to background, enables syslog, etc.
-		"announce"; -- Send announcement to all online users
-		"groups"; -- Shared roster support
-		"mimicking"; -- Prevent address spoofing
-		"motd"; -- Send a message to users when they log in
-		"proxy65"; -- Enables a file transfer proxy service which clients behind NAT can use
-		"s2s_bidi"; -- Bi-directional server-to-server (XEP-0288)
-		-- "server_contact_info"; -- Publish contact information for this service
-		"tombstones"; -- Prevent registration of deleted accounts
-		"welcome"; -- Welcome users who register accounts
-	  "privilege"; -- for roster sync and 'legacy carbons'
+    -- Other specific functionality
+        "posix"; -- POSIX functionality, sends server to background, enables syslog, etc.
+        "announce"; -- Send announcement to all online users
+        "groups"; -- Shared roster support
+        "mimicking"; -- Prevent address spoofing
+        "motd"; -- Send a message to users when they log in
+        "proxy65"; -- Enables a file transfer proxy service which clients behind NAT can use
+        "s2s_bidi"; -- Bi-directional server-to-server (XEP-0288)
+        -- "server_contact_info"; -- Publish contact information for this service
+        "tombstones"; -- Prevent registration of deleted accounts
+        "welcome"; -- Welcome users who register accounts
+        "privilege"; -- for roster sync and 'legacy carbons'
 }
 
 trusted_proxies = { "127.0.0.1", "::1", "{{ prosody_trusted_proxies }}", }
@@ -120,9 +119,9 @@ ssl_ssl = { verify = { "peer", "client_once" } }
 -- These modules are auto-loaded, but should you want
 -- to disable them then uncomment them here:
 modules_disabled = {
-	-- "offline"; -- Store offline messages
-	-- "c2s"; -- Handle client connections
-	-- "s2s"; -- Handle server-to-server connections
+    -- "offline"; -- Store offline messages
+    -- "c2s"; -- Handle client connections
+    -- "s2s"; -- Handle server-to-server connections
 }
 
 -- Debian:
@@ -155,12 +154,12 @@ s2s_secure_auth = true
 -- protect from excessive resource consumption and denial-of-service attacks.
 
 limits = {
-	c2s = {
-		rate = "10kb/s";
-	};
-	s2sin = {
-		rate = "30kb/s";
-	};
+    c2s = {
+        rate = "10kb/s";
+    };
+    s2sin = {
+        rate = "30kb/s";
+    };
 }
 
 -- Authentication
@@ -191,7 +190,7 @@ sql = { driver = "SQLite3", database = "prosody.sqlite" } -- Default. 'database'
 --sql = { driver = "MySQL", database = "prosody", username = "prosody", password = "secret", host = "localhost" }
 {% if prosody_db == 'postgres' %}
 sql = { driver = "PostgreSQL", database = "prosody", username = "prosody",
-	password = "{{ prosody_db_password }}", host = "{{ prosody_db_host }}" }
+    password = "{{ prosody_db_password }}", host = "{{ prosody_db_host }}" }
 {% endif %}
 -- sql_manage_tables = true
 
@@ -229,11 +228,11 @@ turn_external_secret = "{{ turn_external_secret }}"
 --  Logs info and higher to /var/log
 --  Logs errors to syslog also
 log = {
-	-- Log files (change 'info' to 'debug' for debug logs):
-	info = "/var/log/prosody/prosody.log";
-	error = "/var/log/prosody/prosody.err";
-	-- Syslog:
-	{ levels = { "error" }; to = "syslog";  };
+    -- Log files (change 'info' to 'debug' for debug logs):
+    info = "/var/log/prosody/prosody.log";
+    error = "/var/log/prosody/prosody.err";
+    -- Syslog:
+    { levels = { "error" }; to = "syslog";  };
 }
 
 
@@ -261,79 +260,79 @@ certificates = "certs"
 
 contact_info = {
     -- You can specify email addresses as well as XMPP addresses.
-		abuse = {{ abuse_addresses | to_json | replace('[', '{') | replace(']', '}') }};
-		admin = {{ admin_addresses | to_json | replace('[', '{') | replace(']', '}') }};
+        abuse = {{ abuse_addresses | to_json | replace('[', '{') | replace(']', '}') }};
+        admin = {{ admin_addresses | to_json | replace('[', '{') | replace(']', '}') }};
 }
 
 
 site_apps = {
-	{
-		name = "Conversations";
-		text = [[Conversations é o cliente XMPP client tradicional para Android.]];
-		image = "https://upload.wikimedia.org/wikipedia/commons/c/cc/Conversations_%28Instant_Messenger%29_Logo.svg";
-		link = "https://play.google.com/store/apps/details?id=eu.siacs.conversations";
-		platforms = { "Android" };
-		supports_preauth_uri = true;
-		magic_link_format = "{app.link!}&referrer={invite.uri}";
-		download = {
-			buttons = {
-				{
-					image = "https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png";
-					url = "https://play.google.com/store/apps/details?id=eu.siacs.conversations";
-				};
-			};
-		};
-	};
-	{
-		name = "Monocles";
-		text = [[Baseado no Conversations, mas turbinado com Stories, Feeds, Stickers e outros recursos]];
-		image = "https://f-droid.org/repo/de.monocles.chat/en-US/icon_By_09N3UjlWwjECiMxE_5R5ZRY1t9ApwJ3c82_GRZW8=.png";
-		link = "https://f-droid.org/pt_BR/packages/de.monocles.chat/";
-		platforms = { "Android" };
-		supports_preauth_uri = true;
-		magic_link_format = "{app.link!}&referrer={invite.uri}";
-		download = {
-			buttons = {
-				{
-					image = "https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png";
-					url = "https://f-droid.org/pt_BR/packages/de.monocles.chat/";
-				};
-			};
-		};
-	};
-	{
-		name  = "Gajim";
-		text  = [[O melhor cliente cross-plataforma desktop]];
-		image = "https://upload.wikimedia.org/wikipedia/commons/8/87/Gajim.svg";
-		link  = "https://gajim.org/";
-		platforms = { "Windows", "Linux", "macOS" };
-		download = {
-			buttons = {
-				{
-					text = "Download Gajim";
-					url = "https://gajim.org/download/";
-					target = "_blank";
-				};
-			};
-		};
-	};
-	{
-		name  = "Monal";
-		text  = [[Aplicativo referência em iOS]];
-		image = "https://raw.githubusercontent.com/monal-im/Monal/f88d219d38aada7654b59ba40e9766bb2722b961/Art/monal.svg";
-		link  = "https://monal-im.org/";
-		platforms = { "iOS" };
-		supports_preauth_uri = true;
-		download = {
-			buttons = {
-				{
-					image = "https://toolbox.marketingtools.apple.com/api/v2/badges/download-on-the-app-store/black/en-us?releaseDate=1245024000";
-					url = "https://apps.apple.com/app/id317711500";
-					target = "_blank";
-				};
-			};
-		};
-	};
+    {
+        name = "Conversations";
+        text = [[Conversations é o cliente XMPP client tradicional para Android.]];
+        image = "https://upload.wikimedia.org/wikipedia/commons/c/cc/Conversations_%28Instant_Messenger%29_Logo.svg";
+        link = "https://play.google.com/store/apps/details?id=eu.siacs.conversations";
+        platforms = { "Android" };
+        supports_preauth_uri = true;
+        magic_link_format = "{app.link!}&referrer={invite.uri}";
+        download = {
+            buttons = {
+                {
+                    image = "https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png";
+                    url = "https://play.google.com/store/apps/details?id=eu.siacs.conversations";
+                };
+            };
+        };
+    };
+    {
+        name = "Monocles";
+        text = [[Baseado no Conversations, mas turbinado com Stories, Feeds, Stickers e outros recursos]];
+        image = "https://f-droid.org/repo/de.monocles.chat/en-US/icon_By_09N3UjlWwjECiMxE_5R5ZRY1t9ApwJ3c82_GRZW8=.png";
+        link = "https://f-droid.org/pt_BR/packages/de.monocles.chat/";
+        platforms = { "Android" };
+        supports_preauth_uri = true;
+        magic_link_format = "{app.link!}&referrer={invite.uri}";
+        download = {
+            buttons = {
+                {
+                    image = "https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png";
+                    url = "https://f-droid.org/pt_BR/packages/de.monocles.chat/";
+                };
+            };
+        };
+    };
+    {
+        name  = "Gajim";
+        text  = [[O melhor cliente cross-plataforma desktop]];
+        image = "https://upload.wikimedia.org/wikipedia/commons/8/87/Gajim.svg";
+        link  = "https://gajim.org/";
+        platforms = { "Windows", "Linux", "macOS" };
+        download = {
+            buttons = {
+                {
+                    text = "Download Gajim";
+                    url = "https://gajim.org/download/";
+                    target = "_blank";
+                };
+            };
+        };
+    };
+    {
+        name  = "Monal";
+        text  = [[Aplicativo referência em iOS]];
+        image = "https://raw.githubusercontent.com/monal-im/Monal/f88d219d38aada7654b59ba40e9766bb2722b961/Art/monal.svg";
+        link  = "https://monal-im.org/";
+        platforms = { "iOS" };
+        supports_preauth_uri = true;
+        download = {
+            buttons = {
+                {
+                    image = "https://toolbox.marketingtools.apple.com/api/v2/badges/download-on-the-app-store/black/en-us?releaseDate=1245024000";
+                    url = "https://apps.apple.com/app/id317711500";
+                    target = "_blank";
+                };
+            };
+        };
+    };
 };
 
 ------ Additional config files ------
