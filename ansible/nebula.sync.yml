@@ -1,0 +1,19 @@
+---
+- name: Deploy nebula.sync via Docker Compose
+  hosts: nebula.sync
+  become: true
+  roles:
+    - role: compose
+      vars:
+        compose_engine: docker
+        compose_project_src: "{{ inventory_dir }}/../appdata/nebula.sync"
+        compose_project_dest: /opt/nebula.sync
+        additional_folders:
+          - "/opt/nebula.sync/data"
+    - role: alloy
+      vars:
+        service_name: nebula.sync
+        compose_engine: docker
+        log_instance_name: "nebula.sync"
+        enable_port: false
+        enable_docker_sock: true
