@@ -1,0 +1,21 @@
+---
+- name: Deploy continuwuity via Docker Compose
+  hosts: continuwuity
+  become: true
+  roles:
+    - role: compose
+      vars:
+        compose_engine: docker
+        compose_project_src: "{{ inventory_dir }}/../appdata/continuwuity"
+        compose_project_dest: /opt/continuwuity
+        additional_folders_owner: "0:0"
+        additional_folders:
+          - "/opt/continuwuity/data"
+    - role: alloy
+      vars:
+        service_name: continuwuity
+        compose_engine: docker
+        log_instance_name: "continuwuity"
+        enable_port: false
+        enable_docker_sock: true
+

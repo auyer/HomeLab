@@ -1,0 +1,27 @@
+# Continuwuity - Using Caddy Docker Image
+
+services:
+    homeserver:
+        image: forgejo.ellis.link/continuwuation/continuwuity:latest-maxperf
+        restart: unless-stopped
+        ports:
+          - 80:80
+        command: /sbin/conduwuit
+        volumes:
+            - ./data:/var/lib/continuwuity
+            - ./continuwuity-resolv.conf:/etc/resolv.conf # use custom resolvers rather than Docker's
+            - ./continuwuity.toml:/etc/continuwuity.toml
+        environment:
+            CONTINUWUITY_SERVER_NAME: matrix.rcpassos.me
+            CONTINUWUITY_DATABASE_PATH: /var/lib/continuwuity
+            CONTINUWUITY_ADDRESS: 0.0.0.0
+            CONTINUWUITY_PORT: 80
+            CONTINUWUITY_CONFIG: '/etc/continuwuity.toml' # Uncomment if you mapped config toml above
+
+            ## Serve .well-known files to tell others to reach Continuwuity on port :443
+            CONTINUWUITY_WELL_KNOWN: |
+                {
+                client=https://matrix.rcpassos.me,
+                server=matrix.rcpassos.me:443
+                }
+
