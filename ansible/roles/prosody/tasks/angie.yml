@@ -1,0 +1,264 @@
+---
+# Angie role tasks — install, configure
+
+- name: Ensure Angie prerequisites are installed
+  ansible.builtin.apt:
+    name:
+      - ca-certificates
+      - curl
+    state: present
+    update_cache: true
+
+- name: Add Angie signing key
+  ansible.builtin.get_url:
+    url: https://angie.software/keys/angie-signing.gpg
+    dest: /etc/apt/trusted.gpg.d/angie-signing.gpg
+    mode: "0644"
+
+- name: Configure Angie apt repository
+  vars:
+    _angie_repo_version: "{{ angie_repo_version_id or ansible_distribution_major_version | default('') }}"
+    _angie_repo_codename: "{{ angie_repo_codename or ansible_distribution_release | default('') }}"
+  block:
+    - name: Validate Angie repository release selection
+      ansible.builtin.assert:
+        that:
+          - _angie_repo_version is match('^[0-9]+$')
+          - _angie_repo_codename is match('^[a-z]+$')
+        fail_msg: >-
+          Cannot determine a valid Angie apt release
+          (version='{{ _angie_repo_version }}', codename='{{ _angie_repo_codename }}').
+          On distributions Angie does not ship yet (e.g. Debian forky), set
+          angie_repo_version_id and angie_repo_codename (e.g. "13" / "trixie").
+
+    - name: Remove conflicting Angie repository definitions
+      ansible.builtin.shell: |
+        removed=""
+        for f in $(grep -ls "download.angie.software" /etc/apt/sources.list.d/* 2>/dev/null); do
+          if [ "$f" != "/etc/apt/sources.list.d/angie.list" ]; then
+            rm -f "$f"
+            removed="$removed $f"
+          fi
+        done
+        if [ -f /etc/apt/sources.list ] && grep -q "download.angie.software" /etc/apt/sources.list; then
+          sed -i '\#download\.angie\.software#d' /etc/apt/sources.list
+          removed="$removed /etc/apt/sources.list"
+        fi
+        echo "removed:$removed"
+      register: _angie_repo_cleanup
+      changed_when: _angie_repo_cleanup.stdout | trim != 'removed:'
+
+    - name: Add Angie repository
+      ansible.builtin.copy:
+        content: "deb https://download.angie.software/angie/{{ ansible_distribution | lower }}/{{ _angie_repo_version }} {{ _angie_repo_codename }} main\n"
+        dest: /etc/apt/sources.list.d/angie.list
+        owner: root
+        group: root
+        mode: "0644"
+
+- name: Ensure Angie is installed
+  ansible.builtin.apt:
+    name: angie
+    state: present
+    update_cache: true
+
+- name: Install fcgiwrap for ACME hook support
+  ansible.builtin.apt:
+    name: fcgiwrap
+    state: present
+  when: acme_enabled | default(true)
+
+- name: Allow angie user to access fcgiwrap socket
+  ansible.builtin.user:
+    name: angie
+    groups: www-data
+    append: yes
+  notify:
+    - Test Angie configuration
+    - Restart Angie
+  when: acme_enabled | default(true)
+
+- name: Ensure fcgiwrap socket is active
+  ansible.builtin.systemd:
+    name: fcgiwrap.socket
+    state: started
+    enabled: yes
+  when: acme_enabled | default(true)
+
+- name: Ensure ACME client path directory exists
+  ansible.builtin.file:
+    path: "{{ acme_client_path | default('/var/lib/angie/acme') }}"
+    state: directory
+    owner: angie
+    group: angie
+    mode: "0755"
+  when: acme_enabled | default(true)
+
+- name: Deploy Cloudflare credentials for ACME DNS challenge
+  ansible.builtin.template:
+    src: angie/cloudflare.ini
+    dest: /etc/angie/cloudflare.ini
+    owner: angie
+    group: www-data
+    mode: "0640"
+  notify:
+    - Test Angie configuration
+    - Reload Angie
+  when: acme_enabled | default(true)
+
+- name: Deploy ACME Cloudflare hook script
+  ansible.builtin.copy:
+    src: cloudflare-hook.py
+    dest: /usr/local/bin/angie-acme-cloudflare
+    owner: root
+    group: root
+    mode: "0755"
+  notify:
+    - Test Angie configuration
+    - Reload Angie
+  when: acme_enabled | default(true)
+
+- name: Ensure ACME hook log file exists and is writable
+  ansible.builtin.file:
+    path: /var/log/angie/acme-hook.log
+    state: touch
+    owner: www-data
+    group: www-data
+    mode: "0644"
+  when: acme_enabled | default(true)
+
+- name: Ensure Angie log directory exists
+  ansible.builtin.file:
+    path: /var/log/angie
+    state: directory
+    owner: angie
+    group: angie
+    mode: "0755"
+
+- name: Ensure Angie configuration directory exists
+  ansible.builtin.file:
+    path: /etc/angie
+    state: directory
+    owner: angie
+    group: angie
+    mode: "0755"
+
+- name: Ensure Angie conf.d and stream.d directories exist
+  ansible.builtin.file:
+    path: "/etc/angie/{{ item }}"
+    state: directory
+    owner: angie
+    group: angie
+    mode: "0755"
+  loop:
+    - conf.d
+    - stream.d
+
+- name: Deploy main Angie configuration
+  ansible.builtin.template:
+    src: angie/angie.conf
+    dest: /etc/angie/angie.conf
+    owner: angie
+    group: angie
+    mode: "0644"
+  notify:
+    - Test Angie configuration
+    - Reload Angie
+
+- name: Deploy templated Angie conf.d configurations
+  ansible.builtin.template:
+    # src: "conf.d/{{ item | basename }}"
+    src: "{{ item }}"
+    dest: "/etc/angie/conf.d/{{ item | basename }}"
+    owner: angie
+    group: angie
+    mode: "0644"
+  with_fileglob: "../templates/angie/conf.d/*"
+  notify:
+    - Test Angie configuration
+    - Reload Angie
+
+
+- name: Deploy templated Angie stream.d configurations
+  ansible.builtin.template:
+    src: "{{ item }}"
+    dest: "/etc/angie/stream.d/{{ item | basename }}"
+    owner: angie
+    group: angie
+    mode: "0644"
+  with_fileglob: "../templates/angie/stream.d/*"
+  notify:
+    - Test Angie configuration
+    - Reload Angie
+
+- name: Flush Angie config changes
+  ansible.builtin.meta: flush_handlers
+
+- name: Sync ACME certificates to Prosody
+  block:
+    - name: Ensure Prosody certs directory exists
+      ansible.builtin.file:
+        path: /etc/prosody/certs
+        state: directory
+        owner: root
+        group: prosody
+        mode: "0750"
+
+    - name: Wait for ACME certificate to be obtained
+      ansible.builtin.wait_for:
+        path: "{{ acme_client_path }}/{{ acme_client_name }}/certificate.pem"
+        timeout: 300
+        delay: 5
+        msg: >-
+          ACME certificate not found after 5 minutes. If this is a first-time
+          deploy, the cert may be obtained later when the first HTTPS request
+          arrives. Re-run the playbook after the cert appears.
+
+    - name: Copy ACME certificate for Prosody STARTTLS
+      ansible.builtin.copy:
+        src: "{{ acme_client_path }}/{{ acme_client_name }}/certificate.pem"
+        dest: "/etc/prosody/certs/{{ xmpp_domain }}.crt"
+        owner: root
+        group: prosody
+        mode: "0644"
+        remote_src: true
+
+    - name: Copy ACME private key for Prosody STARTTLS
+      ansible.builtin.copy:
+        src: "{{ acme_client_path }}/{{ acme_client_name }}/private.key"
+        dest: "/etc/prosody/certs/{{ xmpp_domain }}.key"
+        owner: root
+        group: prosody
+        mode: "0640"
+        remote_src: true
+
+    - name: Deploy cert renewal sync script
+      ansible.builtin.copy:
+        content: |
+          #!/bin/sh
+          SRC="/var/lib/angie/acme/letsencrypt/certificate.pem"
+          KEY="/var/lib/angie/acme/letsencrypt/private.key"
+          DST="/etc/prosody/certs/{{ xmpp_domain }}.crt"
+          DSTKEY="/etc/prosody/certs/{{ xmpp_domain }}.key"
+          if [ "$SRC" -nt "$DST" ]; then
+            cp "$SRC" "$DST"
+            chmod 644 "$DST"
+            cp "$KEY" "$DSTKEY"
+            chmod 640 "$DSTKEY"
+            chgrp prosody "$DSTKEY"
+            systemctl reload prosody
+          fi
+        dest: /usr/local/bin/prosody-sync-certs.sh
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Schedule cert renewal sync
+      ansible.builtin.cron:
+        name: "Sync ACME certs to Prosody"
+        job: "/usr/local/bin/prosody-sync-certs.sh"
+        minute: "0"
+        hour: "*/6"
+        user: root
+
+  when: acme_enabled | default(true)

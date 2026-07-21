@@ -67,7 +67,7 @@ Component("share.{{ conf_settings.chat_hostname }}")("http_file_share")
 	-- Change the Limit to 100MB:
 	-- http_file_share_size_limit = 1024 * 1024 * 100
 	-- http_file_share_expires_after = "2 weeks"
-	http_external_url = "https://share.{{ conf_settings.chat_hostname }}:5281/"
+	http_external_url = "https://share.{{ conf_settings.chat_hostname }}/"
 
 	-- here you see how we can manipulate the path:
 	http_paths = {

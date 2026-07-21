@@ -103,18 +103,14 @@ modules_enabled = {
         "privilege"; -- for roster sync and 'legacy carbons'
 }
 
-trusted_proxies = { "127.0.0.1", "::1", "{{ prosody_trusted_proxies }}", }
+trusted_proxies = { "127.0.0.1", "::1"{% for proxy in prosody_trusted_proxies %}, "{{ proxy }}"{% endfor %} }
 
 bosh_max_inactivity = 60
-consider_bosh_secure = true
-cross_domain_bosh = true
-cross_domain_websocket = true
-consider_websocket_secure = true
 
-ports = { 5222, 5269, 80 }
-ssl_ports = { 443, 5223 }
-ssl_ssl = { verify = { "peer", "client_once" } }
--- legacy_ssl_ports = {5223}
+-- Plain c2s / s2s ports with STARTTLS (XEP-0368 Direct TLS is retired --
+-- HTTPS is now handled externally by the netbird proxy).
+c2s_ports = { 5222 }
+s2s_ports = { 5269 }
 
 -- These modules are auto-loaded, but should you want
 -- to disable them then uncomment them here:

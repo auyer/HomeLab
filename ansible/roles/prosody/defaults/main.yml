@@ -1,7 +1,7 @@
 ---
 # Prosody server variables
 prosody_service_name: "Chat RCPASSOS"
-prosody_trusted_proxies: "127.0.0.1, ::1"
+prosody_trusted_proxies: []
 prosody_db: "sqlite"
 #prosody_db_password: ""
 #prosody_db_host: ""
@@ -23,7 +23,7 @@ prosody_configs:
     chat_hostname: "chat.example.tld"
     base_hostname: "example.tld"
     unified_push_secret: ""
-    http_external_url: "chat.example.tld:5281"
+    http_external_url: "chat.example.tld"
 
 prosody_feeds: [] # name : "url"
 
@@ -55,5 +55,41 @@ prosody_additional_debian_packages:
   - luarocks
   - libjs-bootstrap4
   - libjs-jquery
+
+# --- Bundled angie (reverse proxy fronting this prosody host) ---
+xmpp_domain: "chat.example.com"
+
+# Multiplex XMPP Direct TLS (XEP-0368) and HTTPS on public port 443 at the
+# stream layer (templates/angie/stream.d/prosody.conf). This angie exists to
+# front prosody, so it defaults to enabled here.
+xmpp_mux_443: false
+
+# Extra multiplexed entry port for the outpost relay (Traefik TCP passthrough
+# with PROXY protocol v2). set_real_ip_from is emitted for each listed
+# trusted source address/CIDR.
+xmpp_outpost_pp_port: 8843
+xmpp_outpost_pp_sources: []
+
+# Where to send browsers hitting https://<xmpp_domain>/ (prosody has no root
+# handler and returns 404). Set to "" to disable the redirect.
+xmpp_root_redirect: "/conversejs"
+
+# Gated debug logging (stream mux routing + prosody https vhost)
+angie_debug_logging: false
+angie_debug_log_level: info
+
+# ACME (Let's Encrypt) integration via Angie's built-in ACME module
+# Uses DNS-01 challenge with Cloudflare API hook
+acme_enabled: true
+acme_email: ""           # Required: email for Let's Encrypt notifications
+acme_client_name: letsencrypt
+acme_client_path: /var/lib/angie/acme
+acme_cloudflare_api_token: ""  # Required: Cloudflare API token with DNS:Edit permission
+
+# Angie apt repository release selection. Leave empty to auto-detect from
+# facts; override when the target runs a release Angie does not ship yet
+# (e.g. Debian forky -> use "13" / "trixie").
+angie_repo_version_id: ""
+angie_repo_codename: ""
 
 

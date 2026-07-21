@@ -9,3 +9,18 @@
   ansible.builtin.systemd:
     name: prosody
     state: restarted
+
+- name: Test Angie configuration
+  ansible.builtin.command:
+    cmd: angie -t
+  changed_when: false
+
+- name: Reload Angie
+  ansible.builtin.systemd:
+    name: angie
+    state: reloaded
+
+- name: Restart Angie
+  ansible.builtin.systemd:
+    name: angie
+    state: restarted
