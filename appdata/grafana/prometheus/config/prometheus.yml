@@ -1,5 +1,5 @@
 global:
-  scrape_interval: 60s
+  scrape_interval: 120s
   evaluation_interval: 30s
 
 rule_files:
@@ -14,3 +14,7 @@ scrape_configs:
       - targets: ['unpoller:9130']
     scrape_interval: 120s  # if you get 429 errors from UniFi, increase this value to 120s or higher.
     scrape_timeout: 10s
+
+  - job_name: "traefik"
+    static_configs:
+      - targets: ["10.255.0.202:8080"]

@@ -1,0 +1,51 @@
+api:
+  dashboard: true
+  insecure: true
+
+entryPoints:
+  web:
+    address: :80
+  websecure:
+    address: :443
+    http3: {}
+    http:
+      tls:
+        certResolver: cloudflare
+        domains:
+          - main: "{{base_domain}}"
+            sans:
+              - "*.{{base_domain}}"
+
+metrics:
+  prometheus:
+    addEntryPointsLabels: true
+    addRoutersLabels: true
+    addServicesLabels: true
+
+{% if access_logs_enabled | default(true) %}
+accessLog:
+  filePath: "/dev/stdout"
+  format: json
+  filters:
+    statusCodes:
+    {% if access_logs_debug_enabled | default(false) %}
+      - "200-299"
+    {% endif %}
+      - "400-599"
+{% endif %}
+
+providers:
+  file:
+    directory: /etc/traefik
+    watch: true
+
+certificatesResolvers:
+  cloudflare:
+    acme:
+      email: {{acme_email}}
+      storage: /letsencrypt/acme.json
+      dnsChallenge:
+        provider: cloudflare
+        resolvers:
+          - "1.1.1.1:53"
+          - "9.9.9.9:53"

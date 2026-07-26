@@ -1,0 +1,271 @@
+http:
+  routers:
+    wildcard-cert:
+      rule: "Host(`{{base_domain}}`)"
+      entryPoints: ["websecure"]
+      service: noop
+      priority: 1
+      tls:
+        certResolver: cloudflare
+        domains:
+          - main: "{{base_domain}}"
+            sans:
+              - "*.{{base_domain}}"
+
+    me-http-redirect:
+      rule: "Host(`*.{{base_domain}}`) || Host(`{{base_domain}}`)"
+      entryPoints: ["web"]
+      middlewares: ["https-redirect"]
+      service: noop
+
+    chat-me:
+      rule: "Host(`chat.{{base_domain}}`)"
+      service: chat-backend
+      entryPoints: ["web", "websecure"]
+      tls: {}
+
+    cloud-me:
+      rule: "Host(`cloud.{{base_domain}}`)"
+      service: cloud-backend
+      entryPoints: ["web", "websecure"]
+      tls: {}
+
+    cp-lan:
+      rule: "Host(`cp.{{base_lan_domain}}`)"
+      service: cp-backend
+      entryPoints: ["web"]
+
+    cp-me:
+      rule: "Host(`cp.{{base_domain}}`)"
+      service: cp-backend
+      entryPoints: ["web", "websecure"]
+      tls: {}
+
+    draw-lan:
+      rule: "Host(`draw.{{base_lan_domain}}`)"
+      service: draw-backend
+      entryPoints: ["web"]
+
+    draw-me:
+      rule: "Host(`draw.{{base_domain}}`)"
+      service: draw-backend
+      entryPoints: ["web", "websecure"]
+      tls: {}
+
+    ender-lan:
+      rule: "Host(`ender.{{base_lan_domain}}`)"
+      service: ender-backend
+      entryPoints: ["web"]
+
+    ender-me:
+      rule: "Host(`ender.{{base_domain}}`)"
+      service: ender-backend
+      entryPoints: ["web", "websecure"]
+      tls: {}
+
+    fbox-lan:
+      rule: "Host(`fbox.{{base_lan_domain}}`)"
+      service: fbox-backend
+      entryPoints: ["web"]
+
+    fbox-me:
+      rule: "Host(`fbox.{{base_domain}}`)"
+      service: fbox-backend
+      entryPoints: ["web", "websecure"]
+      tls: {}
+
+    grafana-lan:
+      rule: "Host(`grafana.{{base_lan_domain}}`)"
+      service: grafana-backend
+      entryPoints: ["web"]
+
+    grafana-me:
+      rule: "Host(`grafana.{{base_domain}}`)"
+      service: grafana-backend
+      entryPoints: ["web", "websecure"]
+      tls: {}
+
+    hg-lan:
+      rule: "Host(`hg.{{base_lan_domain}}`)"
+      service: hg-backend
+      entryPoints: ["web"]
+
+    hg-me:
+      rule: "Host(`hg.{{base_domain}}`)"
+      service: hg-backend
+      entryPoints: ["web", "websecure"]
+      tls: {}
+
+    immich-lan:
+      rule: "Host(`immich.{{base_lan_domain}}`)"
+      service: immich-backend
+      entryPoints: ["web"]
+
+    immich-me:
+      rule: "Host(`immich.{{base_domain}}`)"
+      service: immich-backend
+      entryPoints: ["web", "websecure"]
+      tls: {}
+
+    kuma-me:
+      rule: "Host(`kuma.{{base_domain}}`)"
+      service: kuma-backend
+      entryPoints: ["web", "websecure"]
+      tls: {}
+
+    ma-lan:
+      rule: "Host(`ma.{{base_lan_domain}}`)"
+      service: ma-backend
+      entryPoints: ["web"]
+
+    ma-me:
+      rule: "Host(`ma.{{base_domain}}`)"
+      service: ma-backend
+      entryPoints: ["web", "websecure"]
+      tls: {}
+
+    matrix-me:
+      rule: "Host(`matrix.{{base_domain}}`)"
+      service: matrix-backend
+      entryPoints: ["web", "websecure"]
+      tls: {}
+
+    pihole2-lan:
+      rule: "Host(`pihole2.{{base_lan_domain}}`)"
+      service: pihole2-backend
+      entryPoints: ["web"]
+
+    pihole2-me:
+      rule: "Host(`pihole2.{{base_domain}}`)"
+      service: pihole2-backend
+      entryPoints: ["web", "websecure"]
+      tls: {}
+
+    stream-lan:
+      rule: "Host(`stream.{{base_lan_domain}}`)"
+      service: stream-backend
+      entryPoints: ["web"]
+
+    stream-me:
+      rule: "Host(`stream.{{base_domain}}`)"
+      service: stream-backend
+      entryPoints: ["web", "websecure"]
+      tls: {}
+
+    transmission-lan:
+      rule: "Host(`transmission.{{base_lan_domain}}`)"
+      service: transmission-backend
+      entryPoints: ["web"]
+
+    transmission-me:
+      rule: "Host(`transmission.{{base_domain}}`)"
+      service: transmission-backend
+      entryPoints: ["web", "websecure"]
+      tls: {}
+
+  services:
+    chat-backend:
+      loadBalancer:
+        passHostHeader: true
+        servers:
+          - url: "http://10.255.2.27:5280"
+
+    cloud-backend:
+      loadBalancer:
+        passHostHeader: true
+        servers:
+          - url: "https://nas.rcpassos.lan:30027"
+        serversTransport: cloud-insecure
+
+    cp-backend:
+      loadBalancer:
+        passHostHeader: true
+        servers:
+          - url: "http://10.255.2.6:3923"
+
+    draw-backend:
+      loadBalancer:
+        passHostHeader: true
+        servers:
+          - url: "http://10.255.2.37:3000"
+
+    ender-backend:
+      loadBalancer:
+        passHostHeader: true
+        servers:
+          - url: "http://172.16.88.90:4409"
+
+    fbox-backend:
+      loadBalancer:
+        passHostHeader: true
+        servers:
+          - url: "http://10.255.1.1:8006"
+
+    grafana-backend:
+      loadBalancer:
+        passHostHeader: true
+        servers:
+          - url: "http://10.255.1.25:3000"
+
+    hg-backend:
+      loadBalancer:
+        passHostHeader: true
+        servers:
+          - url: "http://10.255.2.29:3000"
+
+    immich-backend:
+      loadBalancer:
+        passHostHeader: true
+        servers:
+          - url: "http://10.255.1.67:80"
+
+    kuma-backend:
+      loadBalancer:
+        passHostHeader: true
+        servers:
+          - url: "http://10.255.2.230:3001"
+
+    ma-backend:
+      loadBalancer:
+        passHostHeader: true
+        servers:
+          - url: "http://172.16.88.102:8095"
+
+    matrix-backend:
+      loadBalancer:
+        passHostHeader: true
+        servers:
+          - url: "http://10.255.2.29:80"
+
+    pihole2-backend:
+      loadBalancer:
+        passHostHeader: true
+        servers:
+          - url: "http://10.255.0.101:8080"
+
+    stream-backend:
+      loadBalancer:
+        passHostHeader: true
+        servers:
+          - url: "http://10.255.2.156:4533"
+
+    transmission-backend:
+      loadBalancer:
+        passHostHeader: true
+        servers:
+          - url: "http://10.255.1.54:9091"
+
+    noop:
+      loadBalancer:
+        servers:
+          - url: "http://127.0.0.1:9"
+
+  middlewares:
+    https-redirect:
+      redirectScheme:
+        scheme: https
+        permanent: true
+
+  serversTransports:
+    cloud-insecure:
+      insecureSkipVerify: true

@@ -1,0 +1,18 @@
+---
+- name: Deploy traefik via Docker Compose
+  hosts: traefik
+  become: true
+  roles:
+    - role: compose
+      vars:
+        compose_engine: docker
+        compose_project_src: "{{ inventory_dir }}/../appdata/traefik"
+        compose_project_dest: /opt/traefik
+    - role: alloy
+      vars:
+        service_name: traefik
+        compose_engine: docker
+        log_instance_name: "traefik"
+        enable_port: false
+        enable_docker_sock: true
+
