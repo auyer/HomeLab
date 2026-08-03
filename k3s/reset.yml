@@ -1,0 +1,3 @@
+---
+- name: Import k3s reset playbook
+  ansible.builtin.import_playbook: k3s-ansible/playbooks/reset.yml
