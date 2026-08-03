@@ -1,0 +1,48 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: shared-nfs-pvc
+spec:
+  storageClassName: nfs
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: app-pod-alpha
+spec:
+  containers:
+    - name: busybox-container
+      image: busybox
+      # Keeps the pod running for demonstration
+      command: ["/bin/sh", "-c", "tail -f /dev/null"] 
+      volumeMounts:
+        - name: shared-storage
+          mountPath: /mnt/shared-data
+  volumes:
+    - name: shared-storage
+      persistentVolumeClaim:
+        claimName: shared-nfs-pvc
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: app-pod-beta
+spec:
+  containers:
+    - name: busybox-container
+      image: busybox
+      # Writes a timestamp to the shared volume every 10 seconds
+      command: ["/bin/sh", "-c", "while true; do date >> /mnt/shared-data/timestamps.txt; sleep 10; done"]
+      volumeMounts:
+        - name: shared-storage
+          mountPath: /mnt/shared-data
+  volumes:
+    - name: shared-storage
+      persistentVolumeClaim:
+        claimName: shared-nfs-pvc
