@@ -269,6 +269,10 @@ http:
           - url: "http://10.255.2.51:80"
           - url: "http://10.255.2.52:80"
           - url: "http://10.255.2.53:80"
+        healthCheck:
+          path: /ping
+          interval: 10s
+          timeout: 3s
 
     noop:
       loadBalancer:
