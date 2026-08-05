@@ -12,7 +12,7 @@ uptime-kuma:
   namespaceOverride: ""
 
   # If this option is set to false a StateFulset instead of a Deployment is used
-  useDeploy: true
+  useDeploy: false
 
   serviceAccount:
     # Specifies whether a service account should be created
