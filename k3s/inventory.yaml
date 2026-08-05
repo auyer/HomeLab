@@ -12,7 +12,7 @@ k3s_cluster:
   # Required Vars
   vars:
     # Additional OS packages to install on all nodes
-    extra_packages: ["nfs-common", "nfs-kernel-server"]
+    extra_packages: ["nfs-common", "nfs-kernel-server", "qemu-guest-agent"]
     # 
     ansible_port: 22
     ansible_user: auyer
