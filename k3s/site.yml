@@ -1,5 +1,5 @@
 ---
-- name: Install extra OS packages
+- name: Prepare k3s cluster
   hosts: k3s_cluster
   become: true
   tasks:
@@ -8,6 +8,19 @@
         name: "{{ extra_packages }}"
         state: present
       when: extra_packages | default([]) | length > 0
+
+    - name: Create manifests directory
+      ansible.builtin.file:
+        path: /var/lib/rancher/k3s/server/manifests
+        mode: "0700"
+        state: directory
+
+    - name: Configure CoreDNS upstream forwarders
+      ansible.builtin.template:
+        src: manifests/coredns-custom.yml.j2
+        dest: /var/lib/rancher/k3s/server/manifests/coredns-custom.yml
+        mode: "0600"
+      when: upstream_dns_servers is defined
 
 - name: Import k3s cluster playbook
   ansible.builtin.import_playbook: k3s-ansible/playbooks/site.yml

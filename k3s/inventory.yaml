@@ -13,7 +13,12 @@ k3s_cluster:
   vars:
     # Additional OS packages to install on all nodes
     extra_packages: ["nfs-common", "nfs-kernel-server", "qemu-guest-agent"]
-    # 
+
+    # Upstream DNS servers for CoreDNS forwarder (non-cluster queries)
+    upstream_dns_servers:
+      - 10.255.0.100
+      - 10.255.0.101
+
     ansible_port: 22
     ansible_user: auyer
     k3s_version: v1.36.2+k3s1
