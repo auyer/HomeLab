@@ -1,9 +1,7 @@
-CRD_VERSION=1.28.1
+# no customizations on top
+install:
+	helm install --wait -n kubewarden --create-namespace admission-controller kubewarden/admission-controller
 
-install: crd
-	helm upgrade --install --wait -n kubewarden kubewarden-controller .
+uninstall:
+	helm uninstall -n kubewarden admission-controller
 
-
-# CRDs are in a different chart
-crd:
-	helm upgrade --install --wait -n kubewarden --create-namespace kubewarden-crds kubewarden/kubewarden-crds --version ${CRD_VERSION}
