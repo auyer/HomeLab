@@ -1,0 +1,48 @@
+image:
+  repository: deluan/navidrome
+  tag: latest
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+nfs:
+  server: nas.rcpassos.me
+  path: /mnt/data/Media/jellyfin
+
+persistence:
+  requestSize: 10Gi
+  storageClassName: nfs
+
+podSecurityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+
+ingress:
+  enabled: true
+  # className: "" # default
+  annotations:
+      traefik.ingress.kubernetes.io/router.entrypoints: web # http only for now (tls terminated in proxy)
+  hosts:
+    - host: stream.rcpassos.me
+      paths:
+        - path: /
+          pathType: Prefix
+
+service:
+  port: 4533
+
+resources:
+  limits:
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+env:
+  ND_LOGLEVEL: info
+  ND_PORT: "4533"
+  ND_MUSICFOLDER: /music
+  ND_DATAFOLDER: /data
+  ND_SCANSCHEDULE: "1h"
+  ND_SESSIONTIMEOUT: 24h
