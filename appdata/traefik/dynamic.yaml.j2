@@ -119,6 +119,12 @@ http:
       entryPoints: ["web", "websecure"]
       tls: {}
 
+    vaultwarden:
+      rule: "Host(`vw.{{base_domain}}`)"
+      service: k-nodes
+      entryPoints: ["web", "websecure"]
+      tls: {}
+
     ma-lan:
       rule: "Host(`ma.{{base_lan_domain}}`)"
       service: ma-backend
@@ -149,12 +155,12 @@ http:
 
     stream-lan:
       rule: "Host(`stream.{{base_lan_domain}}`)"
-      service: stream-backend
+      service: k-nodes
       entryPoints: ["web"]
 
     stream-me:
       rule: "Host(`stream.{{base_domain}}`)"
-      service: stream-backend
+      service: k-nodes
       entryPoints: ["web", "websecure"]
       tls: {}
 
