@@ -1,0 +1,8 @@
+apiVersion: v2
+name: lgtm-stack
+description: "LGTM observability stack"
+version: 1.0
+dependencies:
+  - name: lgtm
+    version: 0.15.0
+    repository: https://promptlylabs.github.io/lgtm-helm-chart

@@ -80,14 +80,9 @@ http:
       entryPoints: ["web", "websecure"]
       tls: {}
 
-    grafana-lan:
-      rule: "Host(`grafana.{{base_lan_domain}}`)"
-      service: grafana-backend
-      entryPoints: ["web"]
-
     grafana-me:
       rule: "Host(`grafana.{{base_domain}}`)"
-      service: grafana-backend
+      service: k-nodes
       entryPoints: ["web", "websecure"]
       tls: {}
 
