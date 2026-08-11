@@ -12,7 +12,7 @@ k3s_cluster:
   # Required Vars
   vars:
     # Additional OS packages to install on all nodes
-    extra_packages: ["nfs-common", "nfs-kernel-server", "qemu-guest-agent"]
+    extra_packages: ["nfs-common", "nfs-kernel-server"]
 
     # Upstream DNS servers for CoreDNS forwarder (non-cluster queries)
     upstream_dns_servers:
@@ -55,6 +55,3 @@ k3s_cluster:
         distribution.rcpassos.me:
           endpoint:
             - https://distribution.rcpassos.me/v2
-    #
-    # # TODO: 
-    #   nfs -o vers=4 nas.rcpassos.lan:/mnt/Kube
