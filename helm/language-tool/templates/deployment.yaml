@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ .Release.Name }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}
+    spec:
+      securityContext:
+        runAsUser: {{ .Values.podSecurityContext.runAsUser }}
+        runAsGroup: {{ .Values.podSecurityContext.runAsGroup }}
+        fsGroup: {{ .Values.podSecurityContext.fsGroup }}
+      {{- if .Values.ngrams.enabled }}
+      initContainers:
+        - name: download-ngrams
+          image: alpine:3
+          securityContext:
+            runAsUser: 0
+            runAsGroup: 0
+          command:
+            - sh
+            - -c
+            - |
+              set -ex
+              apk add --no-cache unzip wget
+              cd /ngrams
+              {{- range .Values.ngrams.languages }}
+              lang=$(basename "{{ . }}" .zip | sed 's/ngrams-//;s/-[0-9].*//')
+              if [ ! -d "/ngrams/$lang" ]; then
+                wget --retry-connrefused --tries=3 --timeout=60 "{{ . }}" -O "/tmp/$lang.zip"
+                test -s "/tmp/$lang.zip"
+                unzip -d /ngrams "/tmp/$lang.zip"
+                rm "/tmp/$lang.zip"
+              fi
+              {{- end }}
+              chown -R {{ .Values.podSecurityContext.runAsUser }}:{{ .Values.podSecurityContext.runAsGroup }} /ngrams
+          volumeMounts:
+            - name: ngrams
+              mountPath: /ngrams
+      {{- end }}
+      containers:
+        - name: languagetool
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.service.port }}
+              protocol: TCP
+              name: http
+          env:
+            {{- range $key, $value := .Values.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: ngrams
+              mountPath: /ngrams
+      volumes:
+        - name: ngrams
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-pvc

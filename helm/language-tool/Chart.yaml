@@ -1,0 +1,5 @@
+apiVersion: v2
+name: language-tool
+description: "language-tool"
+version: 1.0
+type: application

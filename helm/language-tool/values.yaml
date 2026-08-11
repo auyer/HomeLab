@@ -1,0 +1,46 @@
+image:
+  repository: erikvl87/languagetool
+  tag: "6.8"
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+persistence:
+  size: 30Gi
+  storageClassName: nfs
+
+podSecurityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+
+ingress:
+  enabled: true
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+  hosts:
+    - host: lt.rcpassos.me
+      paths:
+        - path: /
+          pathType: Prefix
+
+service:
+  port: 8010
+
+resources:
+  limits:
+    memory: 4196Mi
+  requests:
+    cpu: 100m
+    memory: 2560Mi
+
+env:
+  TZ: "America/Sao_Paulo"
+  Java_Xms: 2048m
+  Java_Xmx: 3276m
+  langtool_languageModel: /ngrams
+
+ngrams:
+  enabled: true
+  languages:
+    - https://languagetool.org/download/ngram-data/ngrams-en-20150817.zip
