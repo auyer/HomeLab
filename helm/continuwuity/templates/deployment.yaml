@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ .Release.Name }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}
+    spec:
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: continuwuity
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["/sbin/conduwuit"]
+          ports:
+            - containerPort: {{ .Values.service.port }}
+              protocol: TCP
+              name: http
+          env:
+            {{- range $key, $value := .Values.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/continuwuity
+            - name: config
+              mountPath: /etc/continuwuity.toml
+              subPath: continuwuity.toml
+            - name: resolv
+              mountPath: /etc/resolv.conf
+              subPath: resolv.conf
+          livenessProbe:
+            httpGet:
+                path: /_continuwuity/server_version
+                port: {{ .Values.service.port }}
+            initialDelaySeconds: 20
+            periodSeconds: 60
+      volumes:
+        - name: data
+          {{- if .Values.nfs.enabled }}
+          nfs:
+            server: {{ .Values.nfs.server }}
+            path: {{ .Values.nfs.path }}
+            readOnly: false
+          {{- else }}
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-pvc
+          {{- end }}
+        - name: config
+          configMap:
+            name: {{ .Release.Name }}-config
+        - name: resolv
+          configMap:
+            name: {{ .Release.Name }}-resolv

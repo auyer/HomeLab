@@ -1,0 +1,5 @@
+apiVersion: v2
+name: continuwuity
+description: "continuwuity Matrix homeserver"
+version: 1.0
+type: application

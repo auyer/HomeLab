@@ -1,0 +1,74 @@
+image:
+  repository: forgejo.ellis.link/continuwuation/continuwuity
+  tag: latest-maxperf
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+persistence:
+  size: 20Gi
+  storageClassName: nfs
+
+podSecurityContext: {}
+  # runAsUser: 1000
+  # runAsGroup: 1000
+  # fsGroup: 1000
+
+ingress:
+  enabled: true
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+  hosts:
+    - host: matrix.rcpassos.me
+      paths:
+        - path: /
+          pathType: Prefix
+
+nfs:
+  # prefer nfs over PVC
+  enabled: true
+  server: nas.rcpassos.me
+  path: /mnt/data/FboxDisks/continuwuity/continuwuity/data
+
+service:
+  port: 80
+
+resources:
+  limits:
+    memory: 2048Mi
+  requests:
+    cpu: 100m
+    memory: 1024Mi
+
+env:
+  CONTINUWUITY_SERVER_NAME: matrix.rcpassos.me
+  CONTINUWUITY_DATABASE_PATH: /var/lib/continuwuity
+  CONTINUWUITY_ADDRESS: 0.0.0.0
+  CONTINUWUITY_PORT: "80"
+  CONTINUWUITY_CONFIG: /etc/continuwuity.toml
+  CONTINUWUITY_WELL_KNOWN: |
+    {
+    client=https://matrix.rcpassos.me,
+    server=matrix.rcpassos.me:443
+    }
+
+dns:
+  nameservers:
+    - 10.255.0.100
+    - 10.255.0.101
+
+config:
+  toml: |
+    [global]
+    # server_name = "matrix.rcpassos.me"
+    server_name = "RCPassos.me Matrix"
+    new_user_displayname_suffix = "🍾"
+    cache_capacity_modifier = 1.2
+    # 3 - Ipv4AndIpv6 (Query for A and AAAA records in parallel, uses whatever
+    # returns a successful response first)
+    ip_lookup_strategy = 3
+    allow_registration = false
+    trusted_servers = ["matrix.debian.social","matrix.org"]
+    query_trusted_key_servers_first = true
+    rocksdb_optimize_for_spinning_disks = true
+    rocksdb_direct_io = false

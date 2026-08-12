@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-resolv
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ .Release.Name }}
+data:
+  resolv.conf: |
+    {{- range .Values.dns.nameservers }}
+    nameserver {{ . }}
+    {{- end }}
