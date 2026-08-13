@@ -1,0 +1,76 @@
+# CronJob or Deployment
+kind: CronJob
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+
+cronJobApiVersion: "batch/v1"
+schedule: "0 5 * * *"
+# trigger manually for now
+suspend: true
+timeZone: America/Sao_Paulo
+
+deschedulerPolicy:
+  # nodeSelector: "key1=value1,key2=value2"
+  # maxNoOfPodsToEvictPerNode: 10
+  # maxNoOfPodsToEvictPerNamespace: 10
+  # metricsProviders:
+  # - source: KubernetesMetrics
+  # tracing:
+  #   collectorEndpoint: otel-collector.observability.svc.cluster.local:4317
+  #   transportCert: ""
+  #   serviceName: ""
+  #   serviceNamespace: ""
+  #   sampleRate: 1.0
+  #   fallbackToNoOpProviderOnError: true
+
+  # profiles:
+  #   - name: default
+  #     pluginConfig:
+  #       - name: DefaultEvictor
+  #         args:
+  #           podProtections:
+  #             defaultDisabled:
+  #             - "PodsWithLocalStorage"
+  #             extraEnabled:
+  #             - "PodsWithPVC"
+  #       - name: RemoveDuplicates
+  #       - name: RemovePodsHavingTooManyRestarts
+  #         args:
+  #           podRestartThreshold: 100
+  #           includingInitContainers: true
+  #       - name: RemovePodsViolatingNodeAffinity
+  #         args:
+  #           nodeAffinityType:
+  #           - requiredDuringSchedulingIgnoredDuringExecution
+  #       - name: RemovePodsViolatingNodeTaints
+  #       - name: RemovePodsViolatingInterPodAntiAffinity
+  #       - name: RemovePodsViolatingTopologySpreadConstraint
+  #       - name: LowNodeUtilization
+  #         args:
+  #           thresholds:
+  #             cpu: 20
+  #             memory: 20
+  #             pods: 20
+  #           targetThresholds:
+  #             cpu: 50
+  #             memory: 50
+  #             pods: 50
+  #     plugins:
+  #       balance:
+  #         enabled:
+  #           - RemoveDuplicates
+  #           - RemovePodsViolatingTopologySpreadConstraint
+  #           - LowNodeUtilization
+  #       deschedule:
+  #         enabled:
+  #           - RemovePodsHavingTooManyRestarts
+  #           - RemovePodsViolatingNodeTaints
+  #           - RemovePodsViolatingNodeAffinity
+  #           - RemovePodsViolatingInterPodAntiAffinity
