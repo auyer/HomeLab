@@ -1,6 +1,6 @@
 image:
   repository: forgejo.ellis.link/continuwuation/continuwuity
-  tag: latest-maxperf
+  tag: v26.7.3-maxperf
   pullPolicy: IfNotPresent
 
 replicaCount: 1
