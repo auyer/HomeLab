@@ -7,7 +7,7 @@ k3s_cluster:
     agent:
       hosts:
         10.255.2.52:
-        # 10.255.2.53:
+        10.255.2.53:
 
   # Required Vars
   vars:
