@@ -3,8 +3,6 @@ image:
   tag: v26.7.3-maxperf
   pullPolicy: IfNotPresent
 
-replicaCount: 1
-
 persistence:
   size: 20Gi
   storageClassName: nfs

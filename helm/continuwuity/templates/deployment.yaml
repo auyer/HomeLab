@@ -6,7 +6,9 @@ metadata:
   labels:
     app: {{ .Release.Name }}
 spec:
-  replicas: {{ .Values.replicaCount }}
+  replicas: 1 # always 1, cant share a db lock
+  strategy:
+    type: Recreate # delete before create
   selector:
     matchLabels:
       app: {{ .Release.Name }}
