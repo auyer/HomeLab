@@ -1,0 +1,27 @@
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt
+status:
+  acme:
+    lastRegisteredEmail: tls@rcpassos.me
+spec:
+  acme:
+    email: tls@rcpassos.me
+    privateKeySecretRef:
+      name: letsencrypt
+    server: https://acme-v02.api.letsencrypt.org/directory
+    solvers:
+    {{ if .Values.cloudflare }}
+    - selector:
+        dnsZones:
+        {{- range $k, $domainVal := .Values.cloudflare.domain_names }}
+          - {{ $domainVal }}
+        {{- end }}
+      dns01:
+        cloudflare:
+          apiTokenSecretRef:
+            key: CF_API_TOKEN
+            name: cloudflare-api-token-secret
+          email: tls@rcpassos.me
+    {{ end }}
