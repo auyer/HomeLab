@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: app-pod-alpha
+spec:
+  containers:
+    - name: busybox-container
+      image: busybox
+      # Keeps the pod running for demonstration
+      command: ["/bin/sh", "-c", "tail -f /dev/null"] 
+      volumeMounts:
+        - name: shared-storage
+          mountPath: /mnt/shared-data
+  volumes:
+    - name: shared-storage
+      nfs:
+        server: nas.rcpassos.me
+        path: /mnt/data/Media/
+        readOnly: true
