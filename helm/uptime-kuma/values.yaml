@@ -59,7 +59,7 @@ uptime-kuma:
       {}
       # vhost: uptime-kuma.company.corp
     annotations:
-        traefik.ingress.kubernetes.io/router.entrypoints: web # http only for now (tls terminated in proxy)
+        traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
     hosts:
       - host: uptime.rcpassos.me
         paths:

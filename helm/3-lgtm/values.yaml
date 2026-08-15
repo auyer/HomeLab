@@ -611,7 +611,7 @@ lgtm:
     ingress:
       enabled: true
       annotations:
-        traefik.ingress.kubernetes.io/router.entrypoints: web
+        traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
       path: /
       pathType: Prefix
 
@@ -778,7 +778,7 @@ lgtm:
       ingress:
         enabled: true
         annotations:
-          traefik.ingress.kubernetes.io/router.entrypoints: web
+          traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
         hosts:
           - host: loki.rcpassos.me
             paths:
