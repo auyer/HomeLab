@@ -1,0 +1,96 @@
+image:
+  repository: gitlab.futo.org:5050/futo-notes/futo-notes-server/server
+  tag: stable
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+service:
+  # Container/PORT the server listens on (also the Service port).
+  port: 3000
+
+# Credentials are provided by an existing Secret in the release namespace.
+# The chart never renders plaintext passwords itself.
+#
+# Secret contract:
+#   - postgres.enabled=true (built-in):
+#       DATABASE_URL       = postgres://<user>:<pw>@<release>-postgres:5432/<db>
+#       POSTGRES_PASSWORD  = must match the password embedded in DATABASE_URL
+#   - postgres.enabled=false (external):
+#       DATABASE_URL       = full connection string to your external Postgres
+#   - always: either FUTO_NOTES_PASSWORD or FUTO_NOTES_PASSWORD_HASH
+secrets:
+  name: futo-notes-secrets
+  databaseUrlKey: DATABASE_URL
+  postgresPasswordKey: POSTGRES_PASSWORD
+  appPasswordKey: FUTO_NOTES_PASSWORD
+  # Set to a key name (e.g. FUTO_NOTES_PASSWORD_HASH) to use a scrypt hash
+  # instead of the plaintext password. Never set both.
+  appPasswordHashKey: ""
+
+config:
+  logLevel: info
+  authMode: password
+  blobDir: /data/blobs
+  # Optional pass-through (only rendered when non-empty):
+  cookieSecure: ""
+  trustProxy: ""
+  maxBlobBytes: ""
+  dbSsl: ""
+  extraEnv: {}
+
+# Blob storage volume (encrypted note content)
+blob:
+  storage:
+    # pvc | nfs
+    type: nfs
+    size: 10Gi
+    storageClassName: nfs
+    nfs:
+      server: nas.rcpassos.me
+      path: /mnt/data/FboxDisks/futo-notes/blobs
+
+# Built-in Postgres. Set enabled=false to use an external database instead
+# (the server then connects via the Secret's DATABASE_URL).
+postgres:
+  enabled: true
+  image:
+    repository: docker.io/postgres
+    tag: "18-trixie"
+    pullPolicy: IfNotPresent
+  user: futo_notes
+  database: futo_notes
+  port: 5432
+  storage:
+    # pvc | nfs
+    type: nfs
+    size: 10Gi
+    storageClassName: nfs
+    nfs:
+      server: nas.rcpassos.me
+      path: /mnt/data/FboxDisks/futo-notes/postgres
+  podSecurityContext: {}
+  resources: {}
+
+# futo-notes image runs as root at entry to chown the blob dir, then drops to
+# the unprivileged `bun` user (uid 1000). Do NOT set runAsNonRoot or a
+# non-root runAsUser here.
+podSecurityContext: {}
+
+resources:
+  limits:
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+ingress:
+  enabled: true
+  # className: "" # default
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+  hosts:
+    - host: notes.rcpassos.me
+      paths:
+        - path: /
+          pathType: Prefix

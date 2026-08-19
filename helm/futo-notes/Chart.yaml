@@ -1,0 +1,6 @@
+apiVersion: v2
+name: futo-notes
+description: "FUTO Notes Sync Server"
+version: 1.0.0
+appVersion: stable
+type: application

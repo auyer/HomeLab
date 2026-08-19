@@ -1,0 +1,103 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ .Release.Name }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}
+    spec:
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ .Release.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.service.port }}
+              protocol: TCP
+              name: http
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.service.port }}
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.service.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.name }}
+                  key: {{ .Values.secrets.databaseUrlKey }}
+            - name: PORT
+              value: {{ .Values.service.port | quote }}
+            - name: BLOB_DIR
+              value: {{ .Values.config.blobDir | quote }}
+            - name: LOG_LEVEL
+              value: {{ .Values.config.logLevel | quote }}
+            - name: AUTH_MODE
+              value: {{ .Values.config.authMode | quote }}
+            {{- if .Values.secrets.appPasswordHashKey }}
+            - name: FUTO_NOTES_PASSWORD_HASH
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.name }}
+                  key: {{ .Values.secrets.appPasswordHashKey }}
+            {{- else }}
+            - name: FUTO_NOTES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.name }}
+                  key: {{ .Values.secrets.appPasswordKey }}
+            {{- end }}
+            {{- with .Values.config.cookieSecure }}
+            - name: COOKIE_SECURE
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.config.trustProxy }}
+            - name: TRUST_PROXY
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.config.maxBlobBytes }}
+            - name: MAX_BLOB_BYTES
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.config.dbSsl }}
+            - name: DB_SSL
+              value: {{ . | quote }}
+            {{- end }}
+            {{- range $key, $value := .Values.config.extraEnv }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: blob
+              mountPath: {{ .Values.config.blobDir }}
+      volumes:
+        - name: blob
+          {{- if eq .Values.blob.storage.type "nfs" }}
+          nfs:
+            server: {{ .Values.blob.storage.nfs.server }}
+            path: {{ .Values.blob.storage.nfs.path }}
+          {{- else }}
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-blob
+          {{- end }}
