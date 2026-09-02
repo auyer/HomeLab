@@ -50,8 +50,9 @@ resource "null_resource" "borg_config_overrides" {
 
   provisioner "remote-exec" {
     inline = [
-      # 1. Add the Bind Mount
-      "pct set ${local.borg_id} -mp0 /mnt/pve/FboxDisks,mp=/media",
+      # add Add the Bind Mounts
+      "pct set ${local.borg_id} -mp0 /mnt/pve/FboxDisks,mp=/media/fboxdisks",
+
       "pct set ${local.borg_id} -mp1 /mnt/pve/FboxDisks/borg,mp=/opt/borg",
 
       # 2. Restart the container to apply hardware/idmap changes safely
