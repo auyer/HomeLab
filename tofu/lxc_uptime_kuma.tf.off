@@ -14,7 +14,7 @@ resource "proxmox_lxc" "uptime-kuma" {
   ssh_public_keys = var.ssh_key
 
   rootfs {
-    storage = "nvme512"
+    storage = "loval-lvm"
     size    = "8G"
   }
 

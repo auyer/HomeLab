@@ -18,7 +18,7 @@ resource "proxmox_lxc" "continuwuity" {
   ssh_public_keys = var.ssh_key
 
   rootfs {
-    storage = "nvme512"
+    storage = "local-lvm"
     size    = "10G"
   }
 
@@ -51,7 +51,7 @@ resource "null_resource" "continuwuity_config_overrides" {
   provisioner "remote-exec" {
     inline = [
       # 1. Add the Bind Mount
-      "pct set ${local.continuwuity_id} -mp0 /mnt/pve/nasMedia/continuwuity,mp=/opt",
+      "pct set ${local.continuwuity_id} -mp0 /mnt/pve/FboxDisks/continuwuity,mp=/opt",
 
       # 2. Restart the container to apply hardware/idmap changes safely
       "if pct status ${local.continuwuity_id} | grep -q 'running'; then pct stop ${local.continuwuity_id} && sleep 2 && pct start ${local.continuwuity_id}; else pct start ${local.continuwuity_id}; fi"

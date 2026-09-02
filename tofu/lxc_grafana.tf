@@ -14,7 +14,7 @@ resource "proxmox_lxc" "grafana" {
   ssh_public_keys = var.ssh_key
 
   rootfs {
-    storage = "nvme512"
+    storage = "local-lvm"
     size    = "10G"
   }
 

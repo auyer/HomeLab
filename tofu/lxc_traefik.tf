@@ -14,7 +14,7 @@ resource "proxmox_lxc" "traefik" {
   ssh_public_keys = var.ssh_key
 
   rootfs {
-    storage = "nvme512"
+    storage = "local-lvm"
     size    = "6G"
   }
 
