@@ -3,3 +3,6 @@ upgrade:
 
 repo:
 	helm repo add descheduler https://kubernetes-sigs.github.io/descheduler/
+
+uninstall:
+	helm uninstall descheduler --namespace kube-system

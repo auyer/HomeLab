@@ -13,7 +13,7 @@ resources:
 cronJobApiVersion: "batch/v1"
 schedule: "0 5 * * *"
 # trigger manually for now
-suspend: true
+suspend: false
 timeZone: America/Sao_Paulo
 
 deschedulerPolicy:
