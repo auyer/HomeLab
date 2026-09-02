@@ -104,7 +104,7 @@ server_name = "RCPassos.me Matrix"
 #
 # example: "🏳️‍⚧️"
 #
-#new_user_displayname_suffix = "🍾"
+new_user_displayname_suffix = "🍾"
 
 # If enabled, continuwuity will send a simple GET request periodically to
 # `https://continuwuity.org/.well-known/continuwuity/announcements` for any new
@@ -858,10 +858,10 @@ query_trusted_key_servers_first = true
 # example: ["turn:example.turn.uri?transport=udp",
 # "turn:example.turn.uri?transport=tcp"]
 #
-turn_uris = [
-    "turns:turn.chat.rcpassos.me?transport=udp",
-    "turns:turn.chat.rcpassos.me?transport=tcp",
-]
+# turn_uris = [
+#     "turns:turn.chat.rcpassos.me:5349?transport=udp",
+#     "turns:turn.chat.rcpassos.me:5349?transport=tcp",
+# ]
 
 # TURN secret to use for generating the HMAC-SHA1 hash apart of username
 # and password generation.
@@ -869,7 +869,7 @@ turn_uris = [
 # This is more secure, but if needed you can use traditional static
 # username/password credentials.
 #
-turn_secret = "{{ turn_external_secret }}"
+# turn_secret = "{{ turn_external_secret }}"
 
 # TURN secret to use that's read from the file path specified.
 #
@@ -949,7 +949,7 @@ turn_secret = "{{ turn_external_secret }}"
 # For more information, see:
 # https://github.com/facebook/rocksdb/wiki/Direct-IO
 #
-#rocksdb_optimize_for_spinning_disks = false
+rocksdb_optimize_for_spinning_disks = true
 
 # Enables direct-io to increase database performance via unbuffered I/O.
 #
@@ -960,7 +960,7 @@ turn_secret = "{{ turn_external_secret }}"
 # does not support direct-io like FUSE, or any form of complex filesystem
 # setup such as possibly ZFS.
 #
-#rocksdb_direct_io = true
+rocksdb_direct_io = false
 
 # Amount of threads that RocksDB will use for parallelism on database
 # operations such as cleanup, sync, flush, compaction, etc. Set to 0 to
@@ -1905,7 +1905,10 @@ turn_secret = "{{ turn_external_secret }}"
 #
 #support_pgp_key =
 
-[global.matrix_rtc]
+# [global.matrix_rtc]
+# foci = [
+#     { type = "livekit", livekit_service_url = "{{livekit_domain}}" },
+# ]
 
 # A list of MatrixRTC foci (transports) which will be served via the
 # MSC4143 RTC transports endpoint at
