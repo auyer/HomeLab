@@ -1,29 +1,23 @@
 ---
 # Prosody server variables
 prosody_service_name: "Chat RCPASSOS"
-prosody_trusted_proxies: []
-prosody_db: "sqlite"
-#prosody_db_password: ""
-#prosody_db_host: ""
 prosody_invite_registration: true
-prosody_conversejs: true
-prosody_matrix_bridge_enabled: true
-prosody_matrix_bridge_token: ""
-prosody_admins: { "admin@example.tld" }
+prosody_admins:
+  - "admin@example.com"
+
 abuse_addresses:
-  - "xmpp:abuse@example.tld"
-  - "mailto:abuse@example.tld"
+  - "xmpp:abuse@example.com"
+  - "mailto:abuse@example.com"
 
 admin_addresses:
-  - "xmpp:admin@example.tld"
-  - "mailto:admin@example.tld"
+  - "xmpp:admin@example.com"
+  - "mailto:admin@example.com"
 
 prosody_configs:
   example.cfg.lua:
-    chat_hostname: "chat.example.tld"
-    base_hostname: "example.tld"
+    chat_hostname: "chat.example.com"
+    base_hostname: "example.com"
     unified_push_secret: ""
-    http_external_url: "chat.example.tld"
 
 prosody_feeds: [] # name : "url"
 
@@ -35,61 +29,60 @@ prosody_community_modules:
   - mod_csi_simple
   - mod_pubsub_serverinfo
   - mod_pubsub_feeds
-  - mod_pubsub_get
-  - mod_pubsub_eventsource
-  - mod_invites_register_web
+  - mod_pubsub_text_interface
   - mod_privilege
   - mod_throttle_presence
-  - mod_http_libjs
-  - mod_conversejs
-  - mod_pubsub_text_interface
   - mod_measure_active_users
-  - mod_invites_api
 
 prosody_additional_debian_packages:
   - prosody
   - sqlite3
-  - lua-dbi-postgresql
   - lua-unbound
   - lua-bitop
   - luarocks
-  - libjs-bootstrap4
-  - libjs-jquery
 
-# --- Bundled angie (reverse proxy fronting this prosody host) ---
+# --- Bundled angie (stream front for this prosody host) ---
+# Public XMPP domain. A single TLS port (443) is exposed to the web: angie's
+# stream layer inspects ALPN (ssl_preread, XEP-0368) and forwards Direct TLS
+# for xmpp-client / xmpp-server to Prosody. Everything else is dropped.
 xmpp_domain: "chat.example.com"
 
-# Multiplex XMPP Direct TLS (XEP-0368) and HTTPS on public port 443 at the
-# stream layer (templates/angie/stream.d/prosody.conf). This angie exists to
-# front prosody, so it defaults to enabled here.
-xmpp_mux_443: false
+# Host angie forwards Direct TLS to. Keep 127.0.0.1 when angie and prosody are
+# co-located, otherwise the private address of the prosody host.
+prosody_backend: "10.255.2.27"
 
-# Extra multiplexed entry port for the outpost relay (Traefik TCP passthrough
-# with PROXY protocol v2). set_real_ip_from is emitted for each listed
-# trusted source address/CIDR.
-xmpp_outpost_pp_port: 8843
-xmpp_outpost_pp_sources: []
+# Prosody Direct TLS listener ports (XEP-0368). Tuned to the values used in
+# templates/angie/stream.d/prosody.conf.
+prosody_c2s_direct_tls_port: 5223
+prosody_s2s_direct_tls_port: 5270
 
-# Where to send browsers hitting https://<xmpp_domain>/ (prosody has no root
-# handler and returns 404). Set to "" to disable the redirect.
-xmpp_root_redirect: "/conversejs"
+# coturn (STUN/TURN) backend that angie fronts on 3478/3478-udp/5349.
+coturn_backend: "10.255.2.28"
 
-# Gated debug logging (stream mux routing + prosody https vhost)
+# Gated debug logging (stream mux routing)
 angie_debug_logging: false
 angie_debug_log_level: info
 
-# ACME (Let's Encrypt) integration via Angie's built-in ACME module
-# Uses DNS-01 challenge with Cloudflare API hook
-acme_enabled: true
-acme_email: ""           # Required: email for Let's Encrypt notifications
-acme_client_name: letsencrypt
-acme_client_path: /var/lib/angie/acme
-acme_cloudflare_api_token: ""  # Required: Cloudflare API token with DNS:Edit permission
+# --- Let's Encrypt via certbot + Cloudflare DNS-01 ---
+# Prosody terminates TLS directly, so certificates are issued by certbot and
+# imported with 'prosodyctl cert import' (deploy hook under
+# /etc/letsencrypt/renewal-hooks/deploy/). angie only reads a private copy of
+# the certificate for the coturn (5349) stream listener.
+certbot_email: ""        # Required: Let's Encrypt registration email
+cloudflare_api_token: "" # Required: Cloudflare API token with DNS:Edit permission
+# Domains/SANs in the issued certificate. Include the XMPP virtual host and
+# every component subdomain (muc, pubsub, ...) that should present a valid cert.
+certbot_domains:
+  - "{{ xmpp_domain }}"
+# Stable certbot lineage name: determines /etc/letsencrypt/live/<name> and the
+# angie TLS copy filename. Defaults to the public XMPP domain.
+certbot_cert_name: "{{ xmpp_domain }}"
+# Set to true to force re-issuance even when a certificate already exists.
+certbot_force_reissue: false
+prosody_external_turn: false
 
 # Angie apt repository release selection. Leave empty to auto-detect from
 # facts; override when the target runs a release Angie does not ship yet
 # (e.g. Debian forky -> use "13" / "trixie").
 angie_repo_version_id: ""
 angie_repo_codename: ""
-
-

@@ -27,20 +27,20 @@
     group: root
     mode: "0755"
 
-- name: Check which Prosody community modules are installed
-  ansible.builtin.stat:
-    path: "/usr/local/lib/prosody/modules/mod_{{ item }}.lua"
-  register: prosody_module_check
-  loop: "{{ prosody_community_modules }}"
-
-- name: Install missing Prosody community modules
-  ansible.builtin.command:
-    cmd: "prosodyctl install --server=https://modules.prosody.im/rocks/ {{ item.item }}"
-  loop: "{{ prosody_module_check.results }}"
-  when: not item.stat.exists
-  notify:
-    - Check prosody configuration
-    - Restart prosody
+# - name: Check which Prosody community modules are installed
+#   ansible.builtin.stat:
+#     path: "/usr/local/lib/prosody/modules/{{ item }}.lua"
+#   register: prosody_module_check
+#   loop: "{{ prosody_community_modules }}"
+#
+# - name: Install missing Prosody community modules
+#   ansible.builtin.command:
+#     cmd: "prosodyctl install --server=https://modules.prosody.im/rocks/ {{ item.item }}"
+#   loop: "{{ prosody_module_check.results }}"
+#   when: not item.stat.exists
+#   notify:
+#     - Check prosody configuration
+#     - Restart prosody
 
 - name: Ensure Prosody configuration directory exists
   ansible.builtin.file:

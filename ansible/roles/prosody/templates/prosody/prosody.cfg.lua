@@ -19,11 +19,18 @@
 -- Settings in this section apply to the whole server and are the default settings
 -- for any virtual hosts
 
+-- Normalise YAML user input (a flow mapping { "a", "b" } parses as a dict with
+-- null values; a scalar string is also accepted) into plain lists before
+-- rendering Lua table literals below.
+{% set _admins = prosody_admins.keys() | list if prosody_admins is mapping else ([prosody_admins] if prosody_admins is string else prosody_admins) %}
+{% set _abuse_addresses = abuse_addresses.keys() | list if abuse_addresses is mapping else ([abuse_addresses] if abuse_addresses is string else abuse_addresses) %}
+{% set _admin_addresses = admin_addresses.keys() | list if admin_addresses is mapping else ([admin_addresses] if admin_addresses is string else admin_addresses) %}
+
 -- This is a (by default, empty) list of accounts that are admins
 -- for the server. Note that you must create the accounts separately
 -- (see https://prosody.im/doc/creating_accounts for info)
 -- Example: admins = { "user1@example.com", "user2@example.net" }
-admins = "{{ prosody_admins }}"
+admins = {{ _admins | to_json | replace('[', '{') | replace(']', '}') }};
 
 -- This option allows you to specify additional locations where Prosody
 -- will search first for modules. For additional modules you can install, see
@@ -67,15 +74,13 @@ modules_enabled = {
         "uptime"; -- Report how long server has been running
         "version"; -- Replies to server version requests
         "mam"; -- Store recent messages to allow multi-device synchronization
+        {% if prosody_external_turn %}
         "turn_external"; -- Provide external STUN/TURN service for e.g. audio/video calls
+        {% endif %}
         {% if prosody_invite_registration %}
         "invites"; -- Create and manage invites
         "invites_adhoc"; -- Allow admins/users to create invitations via their client
         "invites_register"; -- Allows invited users to create accounts
-        "invites_register_web";
-        "invites_api";
-        "register_apps";
-        "http_libjs";
         "watchregistrations"; -- Alert admins of registrations
         {% endif %}
 
@@ -84,10 +89,9 @@ modules_enabled = {
         "admin_shell"; -- Allow secure administration via 'prosodyctl shell'
 
     -- HTTP modules
-        "http";
-        "bosh"; -- Enable BOSH clients, aka "Jabber over HTTP"
-        "http_openmetrics"; -- for exposing metrics to stats collectors
-        "websocket"; -- XMPP over WebSockets
+    -- None: HTTP/HTTPS (conversejs, BOSH, websocket, HTTP upload, web invites)
+    -- is intentionally not served anymore. XMPP Direct TLS (XEP-0368) is
+    -- fronted by angie on a single public port via ALPN routing.
 
     -- Other specific functionality
         "posix"; -- POSIX functionality, sends server to background, enables syslog, etc.
@@ -95,7 +99,6 @@ modules_enabled = {
         "groups"; -- Shared roster support
         "mimicking"; -- Prevent address spoofing
         "motd"; -- Send a message to users when they log in
-        "proxy65"; -- Enables a file transfer proxy service which clients behind NAT can use
         "s2s_bidi"; -- Bi-directional server-to-server (XEP-0288)
         -- "server_contact_info"; -- Publish contact information for this service
         "tombstones"; -- Prevent registration of deleted accounts
@@ -103,14 +106,13 @@ modules_enabled = {
         "privilege"; -- for roster sync and 'legacy carbons'
 }
 
-trusted_proxies = { "127.0.0.1", "::1"{% for proxy in prosody_trusted_proxies %}, "{{ proxy }}"{% endfor %} }
-
-bosh_max_inactivity = 60
-
--- Plain c2s / s2s ports with STARTTLS (XEP-0368 Direct TLS is retired --
--- HTTPS is now handled externally by the netbird proxy).
-c2s_ports = { 5222 }
-s2s_ports = { 5269 }
+-- XMPP is exposed through a single public TLS port (443) on angie, which
+-- routes XEP-0368 Direct TLS by ALPN: xmpp-client -> c2s_direct_tls_ports,
+-- xmpp-server -> s2s_direct_tls_ports. Plain STARTTLS listeners are disabled.
+c2s_ports = {}
+s2s_ports = {}
+c2s_direct_tls_ports = { {{ prosody_c2s_direct_tls_port | default(5223) }} }
+s2s_direct_tls_ports = { {{ prosody_s2s_direct_tls_port | default(5270) }} }
 
 -- These modules are auto-loaded, but should you want
 -- to disable them then uncomment them here:
@@ -180,14 +182,7 @@ authentication = "internal_hashed"
 -- lua-dbi-sqlite3, lua-dbi-mysql or lua-dbi-postgresql packages to work)
 
 -- For the "sql" backend, you can uncomment *one* of the below to configure:
-{% if prosody_db == 'sqlite' %}
 sql = { driver = "SQLite3", database = "prosody.sqlite" } -- Default. 'database' is the filename.
-{% endif %}
---sql = { driver = "MySQL", database = "prosody", username = "prosody", password = "secret", host = "localhost" }
-{% if prosody_db == 'postgres' %}
-sql = { driver = "PostgreSQL", database = "prosody", username = "prosody",
-    password = "{{ prosody_db_password }}", host = "{{ prosody_db_host }}" }
-{% endif %}
 -- sql_manage_tables = true
 
 
@@ -211,11 +206,12 @@ archive_expires_after = "1w" -- Remove archived messages after 1 week
 -- Find more information at https://prosody.im/doc/turn
 
 -- Specify the address of the TURN service (you may use the same domain as XMPP)
+{% if prosody_external_turn %}
 turn_external_host = "{{ turn_external_host }}"
 
 -- This secret must be set to the same value in both Prosody and the TURN server
 turn_external_secret = "{{ turn_external_secret }}"
-
+{% endif %}
 
 -- Logging configuration
 -- For advanced logging see https://prosody.im/doc/logging
@@ -256,80 +252,10 @@ certificates = "certs"
 
 contact_info = {
     -- You can specify email addresses as well as XMPP addresses.
-        abuse = {{ abuse_addresses | to_json | replace('[', '{') | replace(']', '}') }};
-        admin = {{ admin_addresses | to_json | replace('[', '{') | replace(']', '}') }};
+        abuse = {{ _abuse_addresses | to_json | replace('[', '{') | replace(']', '}') }};
+        admin = {{ _admin_addresses | to_json | replace('[', '{') | replace(']', '}') }};
 }
 
-
-site_apps = {
-    {
-        name = "Conversations";
-        text = [[Conversations é o cliente XMPP client tradicional para Android.]];
-        image = "https://upload.wikimedia.org/wikipedia/commons/c/cc/Conversations_%28Instant_Messenger%29_Logo.svg";
-        link = "https://play.google.com/store/apps/details?id=eu.siacs.conversations";
-        platforms = { "Android" };
-        supports_preauth_uri = true;
-        magic_link_format = "{app.link!}&referrer={invite.uri}";
-        download = {
-            buttons = {
-                {
-                    image = "https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png";
-                    url = "https://play.google.com/store/apps/details?id=eu.siacs.conversations";
-                };
-            };
-        };
-    };
-    {
-        name = "Monocles";
-        text = [[Baseado no Conversations, mas turbinado com Stories, Feeds, Stickers e outros recursos]];
-        image = "https://f-droid.org/repo/de.monocles.chat/en-US/icon_By_09N3UjlWwjECiMxE_5R5ZRY1t9ApwJ3c82_GRZW8=.png";
-        link = "https://f-droid.org/pt_BR/packages/de.monocles.chat/";
-        platforms = { "Android" };
-        supports_preauth_uri = true;
-        magic_link_format = "{app.link!}&referrer={invite.uri}";
-        download = {
-            buttons = {
-                {
-                    image = "https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png";
-                    url = "https://f-droid.org/pt_BR/packages/de.monocles.chat/";
-                };
-            };
-        };
-    };
-    {
-        name  = "Gajim";
-        text  = [[O melhor cliente cross-plataforma desktop]];
-        image = "https://upload.wikimedia.org/wikipedia/commons/8/87/Gajim.svg";
-        link  = "https://gajim.org/";
-        platforms = { "Windows", "Linux", "macOS" };
-        download = {
-            buttons = {
-                {
-                    text = "Download Gajim";
-                    url = "https://gajim.org/download/";
-                    target = "_blank";
-                };
-            };
-        };
-    };
-    {
-        name  = "Monal";
-        text  = [[Aplicativo referência em iOS]];
-        image = "https://raw.githubusercontent.com/monal-im/Monal/f88d219d38aada7654b59ba40e9766bb2722b961/Art/monal.svg";
-        link  = "https://monal-im.org/";
-        platforms = { "iOS" };
-        supports_preauth_uri = true;
-        download = {
-            buttons = {
-                {
-                    image = "https://toolbox.marketingtools.apple.com/api/v2/badges/download-on-the-app-store/black/en-us?releaseDate=1245024000";
-                    url = "https://apps.apple.com/app/id317711500";
-                    target = "_blank";
-                };
-            };
-        };
-    };
-};
 
 ------ Additional config files ------
 -- For organizational purposes you may prefer to add VirtualHost and

@@ -1,0 +1,64 @@
+---
+# Angie role tasks — repository + package install (creates the angie user/group
+# that certbot.yml and angie-config.yml rely on).
+
+- name: Ensure Angie prerequisites are installed
+  ansible.builtin.apt:
+    name:
+      - ca-certificates
+      - curl
+    state: present
+    update_cache: true
+
+- name: Add Angie signing key
+  ansible.builtin.get_url:
+    url: https://angie.software/keys/angie-signing.gpg
+    dest: /etc/apt/trusted.gpg.d/angie-signing.gpg
+    mode: "0644"
+
+- name: Configure Angie apt repository
+  vars:
+    _angie_repo_version: "{{ angie_repo_version_id or ansible_distribution_major_version | default('') }}"
+    _angie_repo_codename: "{{ angie_repo_codename or ansible_distribution_release | default('') }}"
+  block:
+    - name: Validate Angie repository release selection
+      ansible.builtin.assert:
+        that:
+          - _angie_repo_version is match('^[0-9]+$')
+          - _angie_repo_codename is match('^[a-z]+$')
+        fail_msg: >-
+          Cannot determine a valid Angie apt release
+          (version='{{ _angie_repo_version }}', codename='{{ _angie_repo_codename }}').
+          On distributions Angie does not ship yet (e.g. Debian forky), set
+          angie_repo_version_id and angie_repo_codename (e.g. "13" / "trixie").
+
+    - name: Remove conflicting Angie repository definitions
+      ansible.builtin.shell: |
+        removed=""
+        for f in $(grep -ls "download.angie.software" /etc/apt/sources.list.d/* 2>/dev/null); do
+          if [ "$f" != "/etc/apt/sources.list.d/angie.list" ]; then
+            rm -f "$f"
+            removed="$removed $f"
+          fi
+        done
+        if [ -f /etc/apt/sources.list ] && grep -q "download.angie.software" /etc/apt/sources.list; then
+          sed -i '\#download\.angie\.software#d' /etc/apt/sources.list
+          removed="$removed /etc/apt/sources.list"
+        fi
+        echo "removed:$removed"
+      register: _angie_repo_cleanup
+      changed_when: _angie_repo_cleanup.stdout | trim != 'removed:'
+
+    - name: Add Angie repository
+      ansible.builtin.copy:
+        content: "deb https://download.angie.software/angie/{{ ansible_distribution | lower }}/{{ _angie_repo_version }} {{ _angie_repo_codename }} main\n"
+        dest: /etc/apt/sources.list.d/angie.list
+        owner: root
+        group: root
+        mode: "0644"
+
+- name: Ensure Angie is installed
+  ansible.builtin.apt:
+    name: angie
+    state: present
+    update_cache: true

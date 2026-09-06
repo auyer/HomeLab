@@ -1,0 +1,92 @@
+---
+# Let's Encrypt certificate management (certbot + Cloudflare DNS-01).
+# Prosody terminates all XMPP TLS, so certificates are issued here and pushed
+# to Prosody (prosodyctl cert import) and the angie TLS store (coturn 5349).
+
+- name: Install certbot and Cloudflare DNS plugin
+  ansible.builtin.apt:
+    name:
+      - certbot
+      - python3-certbot-dns-cloudflare
+    state: present
+    update_cache: true
+
+- name: Validate certificate configuration
+  ansible.builtin.assert:
+    that:
+      - certbot_email | length > 0
+      - cloudflare_api_token | length > 0
+      - certbot_domains | length > 0
+    fail_msg: >-
+      certbot_email, cloudflare_api_token and certbot_domains must be set to
+      obtain a Let's Encrypt certificate via Cloudflare DNS-01.
+
+- name: Ensure Cloudflare credentials directory exists
+  ansible.builtin.file:
+    path: /etc/letsencrypt
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Deploy Cloudflare credentials for certbot
+  ansible.builtin.template:
+    src: certbot/cloudflare.ini
+    dest: /etc/letsencrypt/cloudflare.ini
+    owner: root
+    group: root
+    mode: "0600"
+
+- name: Ensure angie TLS store directory exists
+  ansible.builtin.file:
+    path: /etc/angie/tls
+    state: directory
+    owner: root
+    group: angie
+    mode: "0750"
+
+- name: Ensure certbot deploy-hooks directory exists
+  ansible.builtin.file:
+    path: /etc/letsencrypt/renewal-hooks/deploy
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Deploy certbot deploy hook (Prosody + angie)
+  ansible.builtin.template:
+    src: certbot/deploy-hook.sh
+    dest: /etc/letsencrypt/renewal-hooks/deploy/prosody.sh
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Check for existing Let's Encrypt certificate
+  ansible.builtin.stat:
+    path: "/etc/letsencrypt/live/{{ certbot_cert_name }}/fullchain.pem"
+  register: _certbot_cert
+
+- name: Check for existing angie TLS certificate
+  ansible.builtin.stat:
+    path: "/etc/angie/tls/{{ certbot_cert_name }}.crt"
+  register: _angie_cert
+
+- name: Obtain Let's Encrypt certificate via Cloudflare DNS-01
+  ansible.builtin.command: >
+    certbot certonly
+    --dns-cloudflare
+    --dns-cloudflare-credentials /etc/letsencrypt/cloudflare.ini
+    --non-interactive --agree-tos
+    -m {{ certbot_email }}
+    --key-type ecdsa
+    --cert-name {{ certbot_cert_name }}
+    -d {{ certbot_domains | join(' -d ') }}
+  args:
+    creates: "/etc/letsencrypt/live/{{ certbot_cert_name }}/fullchain.pem"
+  when:
+    - not _certbot_cert.stat.exists or certbot_force_reissue | default(false)
+
+- name: Install certificates into Prosody and angie
+  ansible.builtin.command: /etc/letsencrypt/renewal-hooks/deploy/prosody.sh
+  when:
+    - not _certbot_cert.stat.exists or not _angie_cert.stat.exists or certbot_force_reissue | default(false)

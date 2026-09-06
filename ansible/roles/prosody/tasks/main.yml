@@ -1,8 +1,20 @@
 ---
 # tasks/main.yml
-
-- name: Run angie tasks
-  ansible.builtin.import_tasks: angie.yml
+#
+# Order matters:
+#  1. prosody   - install/configure prosody (XMPP Direct TLS listener).
+#  2. angie-install - install angie package (creates angie user/group).
+#  3. certbot   - obtain/import the certificate prosody + angie will use.
+#  4. angie-config - deploy the stream ALPN mux (needs the cert for coturn TLS).
 
 - name: Run prosody tasks
   ansible.builtin.import_tasks: prosody.yml
+
+- name: Run angie install tasks
+  ansible.builtin.import_tasks: angie-install.yml
+
+- name: Run certbot tasks
+  ansible.builtin.import_tasks: certbot.yml
+
+- name: Run angie config tasks
+  ansible.builtin.import_tasks: angie-config.yml

@@ -1,0 +1,73 @@
+---
+# Angie role tasks — configure the stream layer (must run after certbot.yml so
+# the coturn TLS certificate exists before the config is validated).
+
+- name: Ensure Angie log directory exists
+  ansible.builtin.file:
+    path: /var/log/angie
+    state: directory
+    owner: angie
+    group: angie
+    mode: "0755"
+
+- name: Ensure Angie configuration directory exists
+  ansible.builtin.file:
+    path: /etc/angie
+    state: directory
+    owner: angie
+    group: angie
+    mode: "0755"
+
+- name: Ensure Angie stream.d directory exists
+  ansible.builtin.file:
+    path: /etc/angie/stream.d
+    state: directory
+    owner: angie
+    group: angie
+    mode: "0755"
+
+- name: Deploy main Angie configuration
+  ansible.builtin.template:
+    src: angie/angie.conf
+    dest: /etc/angie/angie.conf
+    owner: angie
+    group: angie
+    mode: "0644"
+  notify:
+    - Test Angie configuration
+    - Reload Angie
+
+- name: Deploy templated Angie stream.d configurations
+  ansible.builtin.template:
+    src: "{{ item }}"
+    dest: "/etc/angie/stream.d/{{ item | basename }}"
+    owner: angie
+    group: angie
+    mode: "0644"
+  with_fileglob: "../templates/angie/stream.d/*"
+  notify:
+    - Test Angie configuration
+    - Reload Angie
+
+- name: Remove superseded Angie HTTP/ACME artifacts
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/angie/conf.d/prosody.conf
+    - /etc/angie/conf.d/host-meta
+    - /etc/angie/conf.d/host-meta.json
+    - /etc/angie/cloudflare.ini
+    - /usr/local/bin/angie-acme-cloudflare
+    - /usr/local/bin/prosody-sync-certs.sh
+  notify:
+    - Test Angie configuration
+    - Reload Angie
+
+- name: Remove obsolete ACME cert sync cron job
+  ansible.builtin.cron:
+    name: "Sync ACME certs to Prosody"
+    state: absent
+
+- name: Flush Angie config changes
+  ansible.builtin.meta: flush_handlers
