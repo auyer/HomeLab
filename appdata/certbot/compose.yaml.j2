@@ -1,0 +1,30 @@
+services:
+  certbot:
+    image: docker.io/certbot/dns-cloudflare
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt
+      - ./cloudflare.ini:/cloudflare.ini:ro
+    dns:
+      - 1.1.1.1
+      - 1.0.0.1
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        certbot certonly \
+        --dns-cloudflare \
+        --dns-cloudflare-credentials /cloudflare.ini \
+        --email {{acme_email}} \
+        --cert-name {{base_domain}} \
+{% for item in cert_domains %}
+        -d {{item}} \
+{% endfor %}
+        --agree-tos \
+        --non-interactive \
+        --keep-until-expiring
+
+        trap exit TERM;
+        while :; do
+            sleep 24h & wait $${!};
+            certbot renew --non-interactive;
+        done

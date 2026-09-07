@@ -21,7 +21,7 @@
         enable_port: true
         enable_systemd_logs: true
         systemd_logs_service:
-          - service: "container-matridge.service"
-            name: "matridge"
+          # - service: "container-matridge.service"
+          #   name: "matridge"
           - service: "biboumi.service"
             name: "biboumi"
