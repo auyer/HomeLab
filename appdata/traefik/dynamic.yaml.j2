@@ -11,6 +11,7 @@ http:
           - main: "{{base_domain}}"
             sans:
               - "*.{{base_domain}}"
+              - "*.nb.{{base_domain}}"
 
     me-http-redirect:
       rule: "Host(`*.{{base_domain}}`) || Host(`{{base_domain}}`)"
@@ -19,7 +20,7 @@ http:
       service: noop
 
     distribution-me:
-      rule: "Host(`distribution.{{base_domain}}`)"
+      rule: "Host(`distribution.{{base_domain}}`) || Host(`distribution.nb.{{base_domain}}`)"
       service: distribution
       entryPoints: ["websecure"]
       tls: {}
