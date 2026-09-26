@@ -132,6 +132,12 @@ http:
       entryPoints: ["web", "websecure"]
       tls: {}
 
+    home-assistant:
+      rule: "Host(`ha.{{base_domain}}`)"
+      service: ha-backend
+      entryPoints: ["web", "websecure"]
+      tls: {}
+
     matrix-me:
       rule: "Host(`matrix.{{base_domain}}`)"
       service: matrix-backend
@@ -232,6 +238,12 @@ http:
         passHostHeader: true
         servers:
           - url: "http://10.255.1.67:80"
+
+    ha-backend:
+      loadBalancer:
+        passHostHeader: true
+        servers:
+          - url: "http://10.255.2.102"
 
     ma-backend:
       loadBalancer:
