@@ -19,10 +19,21 @@ http:
       middlewares: ["https-redirect"]
       service: noop
 
-    distribution-me:
-      rule: "Host(`distribution.{{base_domain}}`) || Host(`distribution.nb.{{base_domain}}`)"
+    # Pull-Only Access
+    distribution-open:
+      rule: "Host(`open-dist.nb.{{base_domain}}`) && (Method(`GET`) || Method(`HEAD`))"
       service: distribution
       entryPoints: ["websecure"]
+      priority: 20
+      middlewares:
+        - "open-dist-auth"
+      tls: {}
+
+    distribution-me:
+      rule: "Host(`open-dist.nb.{{base_domain}}`) || Host(`distribution.{{base_domain}}`) || Host(`distribution.nb.{{base_domain}}`)"
+      service: distribution
+      entryPoints: ["websecure"]
+      priority: 10
       tls: {}
 
     chat-me:
@@ -298,6 +309,12 @@ http:
       redirectScheme:
         scheme: https
         permanent: true
+
+    # Middleware to inject Basic Auth headers
+    open-dist-auth:
+      headers:
+        customRequestHeaders:
+          Authorization: "Basic {{basic_auth_b64}}"
 
   serversTransports:
     cloud-insecure:
