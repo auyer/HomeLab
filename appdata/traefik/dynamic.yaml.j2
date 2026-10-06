@@ -48,6 +48,18 @@ http:
       entryPoints: ["web", "websecure"]
       tls: {}
 
+    collabora-me:
+      rule: "Host(`collab.{{base_domain}}`)"
+      service: cloud-backend
+      entryPoints: ["web", "websecure"]
+      tls: {}
+
+    nc-me:
+      rule: "Host(`nc.{{base_domain}}`)"
+      service: nc-backend
+      entryPoints: ["web", "websecure"]
+      tls: {}
+
     cp-lan:
       rule: "Host(`cp.{{base_lan_domain}}`)"
       service: cp-backend
@@ -202,6 +214,13 @@ http:
           - url: "http://10.255.2.27:5280"
 
     cloud-backend:
+      loadBalancer:
+        passHostHeader: true
+        servers:
+          - url: "https://nas.rcpassos.lan:30666"
+        serversTransport: cloud-insecure
+
+    nc-backend:
       loadBalancer:
         passHostHeader: true
         servers:
