@@ -1,6 +1,6 @@
 image:
   repository: deluan/navidrome
-  tag: latest
+  tag: 0.64.2
   pullPolicy: IfNotPresent
 
 replicaCount: 1
