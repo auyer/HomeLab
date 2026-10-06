@@ -72,22 +72,41 @@
     excludes: ".git"
   register: _compose_templates
 
-- name: Copy compose project files to target
+- name: Discover static (non-template) files in project source
+  delegate_to: localhost
+  run_once: true
+  become: false
+  ansible.builtin.find:
+    paths: "{{ _compose_src_real.stdout }}"
+    excludes:
+      - ".git"
+      - "*.j2"
+    hidden: true
+    recurse: true
+    file_type: file
+  register: _compose_static
+
+- name: Ensure static file parent directories exist
+  when: _compose_static.files | length > 0
+  ansible.builtin.file:
+    path: "{{ compose_project_dest }}/{{ item.path | replace(_compose_src_real.stdout + '/', '') | dirname }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop: "{{ _compose_static.files }}"
+  changed_when: false
+
+- name: Copy static compose project files to target
+  when: _compose_static.files | length > 0
   ansible.builtin.copy:
-    src: "{{ _compose_src_real.stdout }}/"
-    dest: "{{ compose_project_dest }}"
+    src: "{{ item.path }}"
+    dest: "{{ compose_project_dest }}/{{ item.path | replace(_compose_src_real.stdout + '/', '') }}"
     owner: root
     group: root
     mode: preserve
-
-# Clean up raw .j2 files — they will be replaced by their rendered counterparts
-- name: Remove raw .j2 template files from target
-  ansible.builtin.file:
-    path: "{{ compose_project_dest }}/{{ item.path | replace(_compose_src_real.stdout + '/', '') }}"
-    state: absent
-  loop: "{{ _compose_templates.files }}"
-  when: _compose_templates.files | length > 0
-  changed_when: false
+  loop: "{{ _compose_static.files }}"
+  notify: Restart compose project
 
 - name: Render Jinja2 templates to destination
   when: _compose_templates.files | length > 0
@@ -117,3 +136,6 @@
     state: started
     enabled: true
     daemon_reload: true
+
+- name: Flush handlers to restart this compose project
+  ansible.builtin.meta: flush_handlers

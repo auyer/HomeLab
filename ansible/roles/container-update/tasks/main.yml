@@ -16,15 +16,9 @@
 - name: Update compose projects
   when: container_compose_projects | length > 0
   block:
-    - name: Pull images for compose projects
-      ansible.builtin.command: "{{ container_engine }} compose pull"
-      args:
-        chdir: "{{ item }}"
-      loop: "{{ container_compose_projects }}"
-      changed_when: true
-
-    - name: Restart compose projects with new images
-      ansible.builtin.command: "{{ container_engine }} compose up --detach --remove-orphans"
+    - name: Pull and recreate compose services on image change
+      ansible.builtin.command: >-
+        {{ container_engine }} compose up --detach --pull always --remove-orphans
       args:
         chdir: "{{ item }}"
       loop: "{{ container_compose_projects }}"
