@@ -1,0 +1,176 @@
+ntfy:
+  image:
+    # -- ntfy container image
+    repository: docker.io/binwiederhier/ntfy
+    # -- Image tag
+    tag: "v2.28.0"
+    pullPolicy: IfNotPresent
+
+  # =============================================================================
+  # ntfy Configuration
+  # =============================================================================
+
+  ntfy:
+    # -- Public base URL of the instance (e.g. https://ntfy.example.com)
+    baseUrl: "https://ntfy.nb.rcpassos.me"
+    # -- Default access for unauthenticated users (read-write, read-only, write-only, deny-all)
+    authDefaultAccess: "read-write"
+    # -- Enable behind-proxy mode (trust X-Forwarded-For headers)
+    behindProxy: true
+    # -- Enable Prometheus metrics endpoint at /metrics
+    enableMetrics: true
+    # -- Separate metrics listen address (e.g. :9090). Empty uses main port.
+    metricsListenHttp: ":9090"
+    # -- Attachment total size limit per visitor (e.g. 100M)
+    attachmentTotalSizeLimit: ""
+    # -- Attachment file size limit (e.g. 15M)
+    attachmentFileSizeLimit: ""
+    # -- Attachment expiry duration (e.g. 3h)
+    attachmentExpiryDuration: ""
+    # -- Abuse ban-feed configuration for an external fail2ban or equivalent consumer
+    banFeed:
+      # -- Enable the abuse ban-feed
+      enabled: false
+      # -- Writable file where confirmed abusive visitors are appended
+      file: /var/cache/ntfy/ban.log
+      # -- Rolling window used to count weighted strikes per visitor prefix
+      window: 10m
+      # -- Weighted strikes per window before a visitor prefix is written to the ban file
+      threshold: 100
+      # -- Per-code weights in KEY:WEIGHT format; longest match wins
+      weights:
+        - "42909:10"
+    # -- Extra server.yml configuration lines (appended to ConfigMap)
+    # -- @default -- `""`
+    extraConfig: ""
+    # -- Extra environment variables for the container
+    # -- @default -- `[]`
+    extraEnv: []
+    # -- PostgreSQL configuration. When enabled, SQLite file options are omitted.
+    database:
+      # -- Use PostgreSQL for the message cache, access control, and web push stores
+      enabled: false
+      # -- Existing Secret containing the PostgreSQL connection URL
+      existingSecret: ""
+      # -- Key in the existing Secret containing the PostgreSQL connection URL
+      existingSecretKey: database-url
+
+  # =============================================================================
+  # External Secrets Operator
+  # =============================================================================
+
+  externalSecrets:
+    # -- Render ExternalSecret resources
+    enabled: false
+    # -- Default refresh interval for ExternalSecret resources
+    refreshInterval: 1h
+    # -- ExternalSecret definitions with complete spec blocks
+    items: []
+
+  # =============================================================================
+  # Persistence
+  # =============================================================================
+
+  persistence:
+    # -- Enable persistence for cache and auth databases
+    enabled: true
+    # -- Storage size
+    size: 2Gi
+    # -- Storage class
+    storageClass: "nfs"
+    # -- Access modes
+    accessModes:
+      - ReadWriteOnce
+    # -- Use an existing PVC
+    existingClaim: ""
+
+  # =============================================================================
+  # Service Account
+  # =============================================================================
+
+  serviceAccount:
+    # -- Create a ServiceAccount
+    create: false
+    # -- ServiceAccount name
+    name: ""
+    # -- Annotations for the ServiceAccount
+    annotations: {}
+
+  # =============================================================================
+  # Service
+  # =============================================================================
+
+  service:
+    # -- Service type
+    type: ClusterIP
+    # -- HTTP service port
+    port: 80
+    # -- Annotations for the Service
+    annotations: {}
+    # -- Service IP family policy: SingleStack | PreferDualStack | RequireDualStack. Empty uses cluster default.
+    ipFamilyPolicy: ~
+    # -- Service IP families override. Empty uses cluster default.
+    ipFamilies: []
+
+  # =============================================================================
+  # Ingress
+  # =============================================================================
+
+  ingress:
+    # -- Enable ingress for ntfy
+    enabled: true
+    # -- Ingress class name (for example: traefik, nginx)
+    ingressClassName: traefik
+    annotations:
+        traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    # -- Ingress hosts
+    hosts:
+      - host: ntfy.nb.rcpassos.me
+        paths:
+          - path: /
+            pathType: Prefix
+      - host: ntfy.rcpassos.me
+        paths:
+          - path: /
+            pathType: Prefix
+
+  # =============================================================================
+  # Probes
+  # =============================================================================
+
+  probes:
+    startup:
+      enabled: true
+      path: /v1/health
+      initialDelaySeconds: 5
+      periodSeconds: 5
+      timeoutSeconds: 3
+      failureThreshold: 30
+    liveness:
+      enabled: true
+      path: /v1/health
+      initialDelaySeconds: 0
+      periodSeconds: 15
+      timeoutSeconds: 5
+      failureThreshold: 3
+    readiness:
+      enabled: true
+      path: /v1/health
+      initialDelaySeconds: 0
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+
+  # =============================================================================
+  # Metrics (Prometheus)
+  # =============================================================================
+
+  metrics:
+    # -- Create a ServiceMonitor for Prometheus Operator
+    serviceMonitor:
+      enabled: true
+      # -- Interval for Prometheus scraping
+      interval: 30s
+      # -- Additional labels for the ServiceMonitor
+      labels: {}
+

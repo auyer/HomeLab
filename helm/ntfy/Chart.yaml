@@ -1,0 +1,12 @@
+apiVersion: v2
+name: ntfy
+description: "ntfy"
+version: 1.2.2
+dependencies:
+  - name: ntfy
+    version: 1.2.2
+    # repository: oci://ghcr.io/helmforgedev/helm/ntfy
+    repository: https://repo.helmforge.dev/
+
+
+
