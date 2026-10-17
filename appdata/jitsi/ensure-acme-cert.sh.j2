@@ -24,3 +24,13 @@ if [ ! -s "$D/fullchain.pem" ] || [ ! -s "$D/key.pem" ]; then
     chmod 777 "$D"
     chmod 666 "$D/fullchain.pem" "$D/key.pem"
 fi
+
+{% if alternative_domain_names %}
+# ACME state for the additional hostnames (account key + issued certs).
+# This script runs as root before the worker processes drop privileges, so it
+# can hand the directory to the nginx user that writes to it at runtime.
+S=/var/cache/nginx/acme
+mkdir -p "$S"
+chown -R nginx:nginx "$S"
+chmod 700 "$S"
+{% endif %}

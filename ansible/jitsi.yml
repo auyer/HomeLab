@@ -6,6 +6,8 @@
     - role: compose
       vars:
         domain_name: jitsi.rcpassos.me
+        alternative_domain_names:
+          - meet.rcpassos.me
         acme_address: tls@rcpassos.me
         allowed_rooms:
           - debian-devel-br
