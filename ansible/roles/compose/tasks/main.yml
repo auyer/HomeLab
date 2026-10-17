@@ -69,6 +69,7 @@
     patterns: "*.j2"
     recurse: true
     file_type: file
+    hidden: true # allow .env files too
     excludes: ".git"
   register: _compose_templates
 
