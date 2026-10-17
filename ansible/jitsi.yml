@@ -1,0 +1,36 @@
+---
+- name: Deploy jitsi via Docker Compose
+  hosts: jitsi
+  become: true
+  roles:
+    - role: compose
+      vars:
+        domain_name: jitsi.rcpassos.me
+        acme_address: tls@rcpassos.me
+        allowed_rooms:
+          - debian-devel-br
+          - debian
+          - rcpassos
+          - paulormm
+        # leave empty or undefined to instead return a 404
+        redirect_to: https://debianbrasil.org.br/
+        compose_engine: docker
+        compose_project_src: "{{ inventory_dir }}/../appdata/jitsi"
+        compose_project_dest: /opt/jitsi
+        additional_folders_owner: "1000:1000"
+        additional_folders:
+          - /opt/jitsi
+          - /opt/jitsi/data/web:777
+          - /opt/jitsi/data/prosody/config:777
+          - /opt/jitsi/data/prosody/prosody-plugins-custom:777
+          - /opt/jitsi/data/jicofo:777
+          - /opt/jitsi/data/jvb:777
+          - /opt/jitsi/data/jigasi:777
+          - /opt/jitsi/data/jibri:777
+          - /opt/jitsi/data/transcriber:777
+          - /opt/jitsi/data/storage/jibri:777
+          - /opt/jitsi/data/storage/prosody:777
+          - /opt/jitsi/data/storage/transcripts:777
+          - /opt/jitsi/data/storage/web:777
+          - /opt/jitsi/data/tmp/web-crontabs:777
+          - /opt/jitsi/data/tmp/web-load-test:777

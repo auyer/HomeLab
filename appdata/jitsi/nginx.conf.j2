@@ -37,7 +37,7 @@ http {
         listen 80;
         # listen [::]:80;
 
-        server_name jitsi.rcpassos.me;
+        server_name {{ domain_name }};
 
         location / {
             proxy_pass http://web_http;
@@ -61,10 +61,15 @@ http {
         # listen [::]:443 ssl;
         http2 on;
 
-        server_name jitsi.rcpassos.me;
+        server_name {{ domain_name }};
 
-        ssl_certificate     /etc/nginx/certs/cert.crt;
-        ssl_certificate_key /etc/nginx/certs/cert.key;
+        # Must be a static path: nginx validates it at config-parse time, and
+        # variables can't be populated before the TLS handshake. The
+        # 10-ensure-acme-cert.sh entrypoint hook guarantees the files exist
+        # (self-signed placeholder on first boot, until ACME writes the real
+        # ones); reload nginx after that.
+        ssl_certificate     /etc/nginx/certs/acme-certs/{{ domain_name }}/fullchain.pem;
+        ssl_certificate_key /etc/nginx/certs/acme-certs/{{ domain_name }}/key.pem;
 
         ssl_protocols TLSv1.2 TLSv1.3;
 
@@ -81,9 +86,13 @@ http {
 
         # Anubis internals (challenge page + assets) — must pass through.
         location ^~ /.within.website/          { proxy_pass http://anubis; }
-
-        # The single allowed room.
-        location = /debian-devel-br            { proxy_pass http://anubis; }
+        
+        # Jitsi application files.
+        location ~* \.js$                      { proxy_pass http://anubis; }
+        location ~* \.css$                     { proxy_pass http://anubis; }
+        location = /favicon.ico                { proxy_pass http://anubis; }
+        location = /robots.txt                 { proxy_pass http://anubis; }
+        location = /manifest.json              { proxy_pass http://anubis; }
 
         # Jitsi static assets (js, css, fonts, images, language files, ...).
         location ^~ /libs/                     { proxy_pass http://anubis; }
@@ -97,15 +106,6 @@ http {
         location ^~ /transcripts/              { proxy_pass http://anubis; }
         location ^~ /.well-known/              { proxy_pass http://anubis; }
 
-        # Jitsi root config / PWA files.
-        location = /config.js                  { proxy_pass http://anubis; }
-        location = /interface_config.js        { proxy_pass http://anubis; }
-        location = /external_api.js            { proxy_pass http://anubis; }
-        location = /manifest.json              { proxy_pass http://anubis; }
-        location = /pwa-worker.js              { proxy_pass http://anubis; }
-        location = /favicon.ico                { proxy_pass http://anubis; }
-        location = /robots.txt                 { proxy_pass http://anubis; }
-
         # Signaling (chat): XMPP websocket + BOSH fallback.
         # The websocket bypasses Anubis (it can't proxy upgraded connections) and
         # goes straight to the web container's HTTPS listener.
@@ -117,8 +117,21 @@ http {
         }
         location = /http-bind                  { proxy_pass http://anubis; }
 
+        # allowed rooms.
+{% for room in allowed_rooms %}
+        location = /{{ room }}                 { proxy_pass http://anubis; }
+{% endfor %}
+
         # Everything else (bare /, any other room) -> redirect into the room.
-        location /                             { return 302 /debian-devel-br; }
+        # (only if rooms are defined)
+{% if allowed_rooms %}
+{% if redirect_to %}
+        location /                             { return 301 {{ redirect_to }}; }
+{% else %}
+        location /                             { return 404; }
+{% endif %}
+{% endif %}
+
     }
 
     # Jitsi needs large uploads and long-lived connections

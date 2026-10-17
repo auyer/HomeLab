@@ -1,0 +1,26 @@
+#!/bin/sh
+# Runs as root in the nginx container before the config is parsed.
+#
+# On first boot the ACME certs don't exist yet (the web container's acme.sh
+# can only get them through the ACME HTTP-01 challenge, which is served via
+# THIS container's port 80). A static ssl_certificate pointing at missing
+# files would make nginx refuse to start, deadlocking the whole ACME flow.
+#
+# So: if the real certs are absent, write a throwaway self-signed pair at
+# the exact paths nginx.conf references. The web container's acme.sh later
+# overwrites them with the real ones; reload nginx by hand afterwards
+# (docker compose exec nginx nginx -s reload). No auto-reload on purpose.
+set -e
+
+D=/etc/nginx/certs/acme-certs/{{ domain_name }}
+
+if [ ! -s "$D/fullchain.pem" ] || [ ! -s "$D/key.pem" ]; then
+    mkdir -p "$D"
+    openssl req -new -x509 -nodes -days 3650 -subj "/CN={{ domain_name }}" \
+        -out "$D/fullchain.pem" -keyout "$D/key.pem"
+    # Placeholder is written as root but must be replaceable by the non-root
+    # web container. Make it world-writable for the interim; the real certs
+    # land here with the web container's own ownership.
+    chmod 777 "$D"
+    chmod 666 "$D/fullchain.pem" "$D/key.pem"
+fi
