@@ -49,6 +49,22 @@ bots:
   # Allow common "keeping the internet working" routes (well-known, favicon, robots.txt)
   - import: (data)/common/keep-internet-working.yaml
 
+  # Jitsi Meet mobile apps (Android/iOS) fetch /config.js with their native HTTP
+  # stack — Android sends "okhttp/x.y.z", iOS sends "Jitsi Meet/x CFNetwork/… Darwin/…".
+  # Neither can run Anubis's JS challenge, and both UAs are too generic to match
+  # safely. /config.js is a public, non-sensitive file (served to every browser too),
+  # so allow it by path rather than fingerprinting the generic UA.
+  - name: jitsi-meet-config
+    path_regex: ^/config\.js$
+    action: ALLOW
+
+  # Fallback signaling path for the mobile apps (BOSH), used when the XMPP
+  # websocket is unavailable. It is routed through Anubis in nginx, so allow it
+  # by path as well; it is not scrapeable content and has its own auth/rate limits.
+  - name: jitsi-meet-bosh
+    path_regex: ^/http-bind$
+    action: ALLOW
+
   # # Punish any bot with "bot" in the user-agent string
   # # This is known to have a high false-positive rate, use at your own risk
   # - name: generic-bot-catchall
