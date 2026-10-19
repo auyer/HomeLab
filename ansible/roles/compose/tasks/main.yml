@@ -116,7 +116,7 @@
     dest: "{{ compose_project_dest }}/{{ item.path | replace(_compose_src_real.stdout + '/', '') | regex_replace('\\.j2$', '') }}"
     owner: root
     group: root
-    mode: "0644"
+    mode: "{{ '0755' if item.path | regex_search('\\.sh\\.j2$') else '0644' }}"
   loop: "{{ _compose_templates.files }}"
   notify: Restart compose project
 
