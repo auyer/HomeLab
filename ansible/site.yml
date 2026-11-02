@@ -1,5 +1,5 @@
 ---
-- name: Deploy all XMPP infrastructure services
+- name: Deploy infrastructure services
   hosts: all
   gather_facts: false
 
@@ -14,3 +14,4 @@
 - import_playbook: slidge.yml
 - import_playbook: biboumi.yml
 - import_playbook: navidrome.yml
+- import_playbook: nut.yml

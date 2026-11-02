@@ -1,0 +1,108 @@
+---
+# Default variables for the nut role (user-overridable)
+#
+# Deploys a NUT "netserver": driver + upsd (data server) + upsmon (monitor)
+# on a Debian/Raspbian host with a locally attached UPS.
+
+# --- packages ---------------------------------------------------------------
+# The `nut` metapackage pulls in `nut-server` (upsd + drivers) and
+# `nut-client` (upsmon + upsc/upscmd/upssched).
+nut_packages:
+  - nut
+
+# --- nut.conf ---------------------------------------------------------------
+# MODE gates every unit via an ExecCondition in the packaged systemd units:
+# nut-server, nut-monitor and nut-driver-enumerator do not start at all when
+# MODE is "none" (or "netclient" for the server/driver side). A wrong value
+# fails silently, hence the assertion in tasks/main.yml.
+nut_mode: netserver # none | standalone | netserver | netclient
+nut_upsd_options: ""
+nut_upsmon_options: ""
+
+# --- ups.conf ---------------------------------------------------------------
+nut_ups_name: ups
+# blazer_ser is deprecated upstream but is what this UPS is known to work
+# with. nutdrv_qx is the modern replacement for the Megatec/Q* protocol family.
+nut_ups_driver: blazer_ser
+nut_ups_port: /dev/ttyACM0
+nut_ups_desc: "tsshara"
+nut_ups_maxretry: 3
+
+# --- serial device access ---------------------------------------------------
+# Debian deliberately does NOT add the nut user to dialout (see
+# /usr/share/doc/nut/README.Debian, section 3, and the commented-out
+# `adduser nut dialout` line in nut-server.postinst). Without this the driver
+# cannot open the UPS port.
+nut_device_group: dialout
+
+# --- upsd.conf --------------------------------------------------------------
+# Deliberately wide: upsd.users credentials travel unencrypted (see
+# README.Debian SECURITY CONSIDERATIONS). Narrow this to a LAN address/CIDR
+# if the UPS data should not be reachable from the whole network.
+nut_upsd_listen_address: "0.0.0.0"
+nut_upsd_listen_port: 3493
+nut_upsd_maxage: 15
+
+# --- upsd.users -------------------------------------------------------------
+# Passwords have no usable default on purpose: the role asserts they are set.
+nut_admin_user: admin
+nut_admin_password: ""
+nut_observer_user: observer
+nut_observer_password: ""
+
+# --- upsmon.conf ------------------------------------------------------------
+nut_monitor_ups: "{{ nut_ups_name }}@localhost"
+nut_monitor_powervalue: 1
+nut_monitor_user: "{{ nut_admin_user }}"
+nut_monitor_password: "{{ nut_admin_password }}"
+nut_monitor_role: primary # primary | secondary
+nut_minsupplies: 1
+nut_shutdowncmd: "/sbin/shutdown -h +0"
+nut_powerdownflag: "/etc/killpower"
+nut_pollfreq: 5
+nut_pollfreqalert: 5
+nut_deadtime: 15
+nut_hostsync: 15
+nut_finaldelay: 180
+nut_offduration: 30
+nut_rbwarntime: 43200
+nut_nocommwarntime: 300
+
+# --- upssched -----------------------------------------------------------------
+# Off by default: deploying it requires NOTIFYFLAG ...+EXEC wiring in
+# upsmon.conf and a writable FIFO directory under /run, which is more moving
+# parts than a plain monitor needs. When disabled, upssched.conf is deployed
+# with PIPEFN/LOCKFN/AT commented out, matching the stock Debian sample.
+nut_upssched_enabled: false
+nut_upssched_dir: /run/nut/upssched
+# Packaged by nut-client; override only together with
+# nut_upssched_cmd_custom: true.
+nut_upssched_cmdscript: /usr/bin/upssched-cmd
+nut_upssched_cmd_custom: false
+nut_upssched_pipefn: "{{ nut_upssched_dir }}/upssched.pipe"
+nut_upssched_lockfn: "{{ nut_upssched_dir }}/upssched.lock"
+# AT <notifytype> * <action> <name> [<interval>]
+nut_upssched_timers:
+  - notifytype: ONBATT
+    action: START-TIMER
+    name: onbattwarn
+    interval: 60
+  - notifytype: ONLINE
+    action: CANCEL-TIMER
+    name: onbattwarn
+  - notifytype: COMMBAD
+    action: START-TIMER
+    name: upsgone
+    interval: 30
+  - notifytype: COMMOK
+    action: CANCEL-TIMER
+    name: upsgone
+
+# --- services ---------------------------------------------------------------
+# nut-driver is a *target* (nut-driver.target), not a service, and the
+# per-device instances are created/removed by nut-driver-enumerator.service
+# from ups.conf. nut.target is the umbrella that Wants= all of them.
+nut_target_unit: nut.target
+nut_driver_enumerator_unit: nut-driver-enumerator.service
+nut_server_unit: nut-server.service
+nut_monitor_unit: nut-monitor.service

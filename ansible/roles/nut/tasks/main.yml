@@ -1,0 +1,171 @@
+---
+# NUT role tasks — install, configure and run a NUT netserver.
+#
+# Component model on Debian/Raspbian (nut-server + nut-client packages):
+#   nut-driver-enumerator.service  turns each ups.conf section into a
+#                                  nut-driver@<name> service instance
+#   nut-driver.target              groups those instances
+#   nut-server.service             upsd, the data server
+#   nut-monitor.service            upsmon, the shutdown monitor
+#   nut.target                     umbrella: Wants= all of the above
+
+- name: Assert required variables are sane
+  ansible.builtin.assert:
+    that:
+      - nut_mode in ['none', 'standalone', 'netserver', 'netclient']
+      - nut_monitor_role in ['primary', 'secondary']
+      - nut_admin_password | length > 0
+      - nut_observer_password | length > 0
+    fail_msg: >-
+      nut_mode must be one of none/standalone/netserver/netclient,
+      nut_monitor_role must be primary or secondary, and
+      nut_admin_password / nut_observer_password must be set
+      (see group_vars for the target host).
+    quiet: true
+
+- name: Ensure NUT is installed
+  ansible.builtin.apt:
+    name: "{{ nut_packages }}"
+    state: present
+    update_cache: true
+
+# Debian intentionally leaves `adduser nut dialout` out of nut-server.postinst
+# (README.Debian section 3 asks the admin to do it), so the driver cannot open
+# /dev/ttyACM0 unless we grant it here.
+- name: Allow the nut user to access serial devices
+  ansible.builtin.user:
+    name: nut
+    groups: "{{ nut_device_group }}"
+    append: true
+  notify:
+    - Restart nut-driver-enumerator
+
+# The package only fixes ownership on first install; re-assert it so a
+# re-provisioned or partially-purged host ends up in the same state.
+- name: Ensure /etc/nut exists with restrictive ownership
+  ansible.builtin.file:
+    path: /etc/nut
+    state: directory
+    owner: root
+    group: nut
+    mode: "0750"
+
+- name: Ensure /var/lib/nut exists with restrictive ownership
+  ansible.builtin.file:
+    path: /var/lib/nut
+    state: directory
+    owner: root
+    group: nut
+    mode: "0770"
+
+# MODE drives an ExecCondition in nut-server, nut-monitor and
+# nut-driver-enumerator, so a change here needs the whole stack restarted.
+- name: Deploy nut.conf
+  ansible.builtin.template:
+    src: nut.conf.j2
+    dest: /etc/nut/nut.conf
+    owner: root
+    group: nut
+    mode: "0640"
+  notify:
+    - Restart nut-driver-enumerator
+    - Restart nut-server
+    - Restart nut-monitor
+
+- name: Deploy ups.conf
+  ansible.builtin.template:
+    src: ups.conf.j2
+    dest: /etc/nut/ups.conf
+    owner: root
+    group: nut
+    mode: "0640"
+  notify:
+    - Restart nut-driver-enumerator
+    - Restart nut-server
+
+- name: Deploy upsd.conf
+  ansible.builtin.template:
+    src: upsd.conf.j2
+    dest: /etc/nut/upsd.conf
+    owner: root
+    group: nut
+    mode: "0640"
+  notify:
+    - Restart nut-server
+
+- name: Deploy upsd.users
+  ansible.builtin.template:
+    src: upsd.users.j2
+    dest: /etc/nut/upsd.users
+    owner: root
+    group: nut
+    mode: "0640"
+  notify:
+    - Restart nut-server
+
+- name: Deploy upsmon.conf
+  ansible.builtin.template:
+    src: upsmon.conf.j2
+    dest: /etc/nut/upsmon.conf
+    owner: root
+    group: nut
+    mode: "0640"
+  notify:
+    - Restart nut-monitor
+
+- name: Deploy upssched.conf
+  ansible.builtin.template:
+    src: upssched.conf.j2
+    dest: /etc/nut/upssched.conf
+    owner: root
+    group: nut
+    mode: "0640"
+  notify:
+    - Restart nut-monitor
+
+# upssched needs a private directory for its FIFO and lock file, owned by the
+# unprivileged upsmon user (PIPEFN must not be world-writable).
+- name: Ensure upssched runtime directory exists
+  ansible.builtin.file:
+    path: "{{ nut_upssched_dir }}"
+    state: directory
+    owner: nut
+    group: nut
+    mode: "0750"
+  when: nut_upssched_enabled | bool
+
+# /run is a tmpfs, and the packaged nut-common-tmpfiles.conf does not create
+# this subdirectory, so it would disappear on reboot.
+- name: Persist upssched runtime directory across reboots
+  ansible.builtin.copy:
+    dest: /etc/tmpfiles.d/nut-upssched.conf
+    content: |
+      #Managed by Ansible (role: nut)
+      d {{ nut_upssched_dir }} 0750 nut nut -
+    owner: root
+    group: root
+    mode: "0644"
+  when: nut_upssched_enabled | bool
+
+# Optional override of the packaged /usr/bin/upssched-cmd stub.
+- name: Deploy custom upssched-cmd script
+  ansible.builtin.copy:
+    src: upssched-cmd
+    dest: "{{ nut_upssched_cmdscript }}"
+    owner: root
+    group: root
+    mode: "0755"
+  when:
+    - nut_upssched_enabled | bool
+    - nut_upssched_cmd_custom | bool
+  notify:
+    - Restart nut-monitor
+
+# nut.target is the only correct enablement handle: `nut-driver` is a target,
+# not a service, and the per-device instances are created by the enumerator.
+- name: Enable and start NUT
+  ansible.builtin.systemd:
+    name: "{{ nut_target_unit }}"
+    enabled: true
+    state: started
+    daemon_reload: true

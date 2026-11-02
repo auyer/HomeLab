@@ -1,0 +1,20 @@
+---
+# Restarting the enumerator re-reads ups.conf, creates/removes the
+# nut-driver@<name> instances and restarts nut-server itself when the set of
+# device sections changed.
+- name: Restart nut-driver-enumerator
+  ansible.builtin.systemd:
+    name: "{{ nut_driver_enumerator_unit }}"
+    state: restarted
+
+# LISTEN in upsd.conf is only read at startup; `upsd -c reload` does not
+# apply it, so a restart is required.
+- name: Restart nut-server
+  ansible.builtin.systemd:
+    name: "{{ nut_server_unit }}"
+    state: restarted
+
+- name: Restart nut-monitor
+  ansible.builtin.systemd:
+    name: "{{ nut_monitor_unit }}"
+    state: restarted

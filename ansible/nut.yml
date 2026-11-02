@@ -1,0 +1,7 @@
+---
+- name: Deploy NUT Power Monitor
+  hosts: pi3
+  become: true
+
+  roles:
+    - role: nut

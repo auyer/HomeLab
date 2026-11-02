@@ -1,0 +1,21 @@
+---
+galaxy_info:
+  role_name: nut
+  description: Install and configure a Network UPS Tools (NUT) netserver on Debian/Raspbian
+  license: MIT
+  min_ansible_version: "2.14"
+  platforms:
+    - name: Debian
+      versions:
+        - bookworm
+        - trixie
+    - name: Ubuntu
+      versions:
+        - jammy
+        - noble
+  galaxy_tags:
+    - nut
+    - ups
+    - power
+
+dependencies: []
