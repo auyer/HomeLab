@@ -1,0 +1,47 @@
+[Unit]
+Description=NUT UPS battery threshold sound alert
+Documentation=man:upsc(8)
+# Requires the data server to be up; without upsd there is nothing to poll.
+After=nut-server.service
+Wants=nut-server.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/nut-sound-battery
+
+# Runs as nut for the same reason upsmon does: no root needed. Membership of
+# an audio group (audio, or pulse-access on PipeWire/PulseAudio hosts) is what
+# actually grants /dev/snd access; /dev/snd is 0660 root:audio on Debian.
+User=nut
+Group=nut
+{% if nut_sounds_extra_groups | length > 0 %}
+SupplementaryGroups={{ nut_sounds_extra_groups | join(' ') }}
+{% endif %}
+
+# The player must be able to find the audio device; a bare environment leaves
+# aplay unable to open the default PCM on some PulseAudio/PipeWire setups.
+{% if nut_sounds_player_env | length > 0 %}
+{% for key, value in nut_sounds_player_env.items() %}
+Environment="{{ key }}={{ value }}"
+{% endfor %}
+{% endif %}
+
+# Sandboxing that keeps the script able to do its job and little else.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+# State file lives under StateDirectory (see below), audio needs /dev/snd.
+StateDirectory=nut-sound
+ReadWritePaths=/run/nut
+# DeviceAllow only has an effect together with DevicePolicy=closed; without it
+# the default policy permits every device, so state the intent explicitly.
+DevicePolicy=closed
+DeviceAllow=/dev/null rw
+DeviceAllow=/dev/zero rw
+DeviceAllow=/dev/snd/ rw
+DeviceAllow=/dev/dsp rw
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6

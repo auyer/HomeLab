@@ -18,3 +18,11 @@
   ansible.builtin.systemd:
     name: "{{ nut_monitor_unit }}"
     state: restarted
+
+# A changed script or unit file needs the timer cycle to pick it up; restarting
+# the timer (not just the service) also resets the OnUnitActiveSec schedule.
+- name: Restart nut-sound-battery timer
+  ansible.builtin.systemd:
+    name: "{{ nut_sound_battery_timer_unit }}"
+    state: restarted
+    daemon_reload: true

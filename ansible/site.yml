@@ -14,4 +14,4 @@
 - import_playbook: slidge.yml
 - import_playbook: biboumi.yml
 - import_playbook: navidrome.yml
-- import_playbook: nut.yml
+- import_playbook: nut-server.yml

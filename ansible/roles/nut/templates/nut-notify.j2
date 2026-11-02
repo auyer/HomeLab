@@ -1,0 +1,43 @@
+#!/bin/sh
+#
+# nut-notify — single NOTIFYCMD dispatcher for upsmon.
+#
+# upsmon accepts only one NOTIFYCMD, but we need two independent consumers of
+# the notification stream:
+#
+#   * upssched, for delayed/timer-based handling (START-TIMER on ONBATT etc.)
+#   * sound playback, for immediate audible feedback
+#
+# This script fans out to both. It is called by upsmon with the NOTIFYMSG text
+# as $1 and the event type in $NOTIFYTYPE; the type is what we dispatch on,
+# because the message text is configurable and may be translated.
+#
+# Managed by Ansible (role: nut). Local edits will be overwritten.
+#
+# Everything here is best-effort: a missing audio device, an absent player or a
+# dead upssched must never stop upsmon from handling a real power event, so
+# nothing is allowed to fail loudly and the script always exits 0.
+
+set -u
+
+NOTIFY_TYPE="${NOTIFYTYPE:-}"
+NOTIFY_MSG="${1:-}"
+
+log() {
+    logger -t nut-notify -- "$*" 2>/dev/null || true
+}
+
+# --- upssched ---------------------------------------------------------------
+# upssched reads the event type from NOTIFYTYPE exactly as we received it, so
+# the environment is simply inherited.
+{% if nut_upssched_enabled | bool %}
+{{ nut_upssched_bin }} "$NOTIFY_MSG" || log "upssched returned $?"
+{% endif %}
+
+# --- sounds -----------------------------------------------------------------
+{% if nut_sounds_enabled | bool %}
+/usr/local/bin/nut-sound-event "$NOTIFY_TYPE" "$NOTIFY_MSG" || \
+    log "sound event '$NOTIFY_TYPE' failed"
+{% endif %}
+
+exit 0

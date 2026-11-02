@@ -1,0 +1,160 @@
+#!/bin/sh
+#
+# nut-sound-battery — play a sound when the battery crosses a threshold.
+#
+# NUT has no "battery reached N%" notification: battery.charge is a value you
+# have to poll. nut-sound-battery.timer runs this (by default once a minute)
+# and it plays the configured file when the charge drops past a threshold.
+#
+# Usage: nut-sound-battery
+#
+# Managed by Ansible (role: nut). Local edits will be overwritten.
+#
+# State machine, kept in $STATE_FILE so it survives between timer runs:
+#
+#   * Each threshold is "armed" until the charge falls to it, then it fires
+#     once and becomes "spent".
+#   * A spent threshold re-arms only after the charge climbs back above
+#     threshold + hysteresis. That is what stops a battery sitting at exactly
+#     60% from replaying batery_60.wav every single minute.
+#   * Crossing 60 -> 40 -> 20 emits each sound once, in order, as it passes.
+#
+# Exit status is always 0 unless a real error occurs, so a transient upsc
+# failure does not get logged as a unit failure by systemd.
+
+set -u
+
+UPS="{{ nut_monitor_ups }}"
+SOUND_DIR="{{ nut_sounds_dir }}"
+PLAYER="{{ nut_sounds_player }}"
+PLAYER_ARGS="{{ nut_sounds_player_args }}"
+STATE_FILE="{{ nut_sound_state_file }}"
+HYSTERESIS="{{ nut_sound_battery_hysteresis }}"
+ON_BATT_ONLY="{{ nut_sound_battery_only_on_battery | bool | lower }}"
+MAX_PLAYERS="{{ nut_sound_max_players }}"
+
+log() {
+    logger -t nut-sound -- "$*" 2>/dev/null || true
+}
+
+mkdir -p "$(dirname "$STATE_FILE")" 2>/dev/null || true
+
+# --- read current state ------------------------------------------------------
+# battery.charge can be absent, "unknown" or "--" depending on the driver and
+# UPS support, so parse defensively and bail quietly when it is unusable.
+CHARGE=$(upsc "$UPS" battery.charge 2>/dev/null | tr -dc '0-9')
+
+if [ -z "$CHARGE" ]; then
+    # No usable reading. Do not touch state: a dropout must not look like a
+    # crossing, and losing state would cause spurious replays.
+    exit 0
+fi
+
+STATUS=$(upsc "$UPS" ups.status 2>/dev/null || echo "")
+
+# Only alert while discharging by default; charging back up is not news.
+if [ "$ON_BATT_ONLY" = "true" ]; then
+    case " $STATUS " in
+        *" OB "*) : ;;
+        *) exit 0 ;;
+    esac
+fi
+
+# --- load previous state -----------------------------------------------------
+# Format: "<percent> <spent|armed>" per line, one line per configured threshold.
+prev_for() {
+    _want="$1"
+    [ -r "$STATE_FILE" ] || { echo ""; return 0; }
+    awk -v w="$_want" '$1 == w { print $2; found=1; exit } END { if (!found) print "" }' \
+        "$STATE_FILE" 2>/dev/null || echo ""
+}
+
+# --- evaluate thresholds -----------------------------------------------------
+# Written in ascending order so that when several thresholds are crossed in a
+# single jump, the most urgent (lowest) sound plays last and is what the user
+# is left hearing.
+THRESHOLDS="{{ nut_sound_battery_thresholds | sort(attribute='percent') | map(attribute='percent') | zip(nut_sound_battery_thresholds | sort(attribute='percent') | map(attribute='file')) | map('join', ':') | join(' ') }}"
+
+NEW_STATE=""
+PLAY_FILE=""
+
+for entry in $THRESHOLDS; do
+    # entry is "<percent>:<file>"
+    t_percent=${entry%%:*}
+    t_file=${entry#*:}
+
+    case "$CHARGE" in
+        ''|*[!0-9]*) continue ;;
+    esac
+
+    prev=$(prev_for "$t_percent")
+
+    # Default for a threshold we have never seen: armed. On first run, a
+    # battery already below a threshold should not blast every file at once
+    # at boot, so treat "never seen and already below" as spent without sound.
+    if [ -z "$prev" ]; then
+        if [ "$CHARGE" -le "$t_percent" ]; then
+            prev="spent"
+        else
+            prev="armed"
+        fi
+    fi
+
+    if [ "$prev" = "armed" ] && [ "$CHARGE" -le "$t_percent" ]; then
+        PLAY_FILE="$t_file"
+        NEW_STATE="$NEW_STATE$t_percent spent
+"
+    elif [ "$prev" = "spent" ] && [ "$CHARGE" -gt "$((t_percent + HYSTERESIS))" ]; then
+        # Recovered far enough above the threshold: ready to fire again.
+        NEW_STATE="$NEW_STATE$t_percent armed
+"
+    else
+        NEW_STATE="$NEW_STATE$t_percent $prev
+"
+    fi
+done
+
+# --- persist state -----------------------------------------------------------
+# Write atomically so an interrupted run cannot leave a truncated state file.
+if [ -n "$NEW_STATE" ]; then
+    printf '%s' "$NEW_STATE" > "$STATE_FILE.tmp" 2>/dev/null &&
+        mv "$STATE_FILE.tmp" "$STATE_FILE" 2>/dev/null || \
+        log "could not persist state to $STATE_FILE"
+fi
+
+# --- play --------------------------------------------------------------------
+[ -n "$PLAY_FILE" ] || exit 0
+
+if [ ! -r "$SOUND_DIR/$PLAY_FILE" ]; then
+    log "missing sound file: $SOUND_DIR/$PLAY_FILE (charge ${CHARGE}%)"
+    exit 0
+fi
+
+if [ -n "$MAX_PLAYERS" ] && [ "$MAX_PLAYERS" -gt 0 ] 2>/dev/null; then
+    _count=$(pgrep -c -f "$PLAYER .*$SOUND_DIR/" 2>/dev/null || echo 0)
+    if [ "${_count:-0}" -ge "$MAX_PLAYERS" ] 2>/dev/null; then
+        log "skipping $PLAY_FILE: $_count players already running"
+        exit 0
+    fi
+fi
+
+log "battery ${CHARGE}% crossed threshold: playing $PLAY_FILE"
+# Capture stderr so a failure reports the real reason rather than a bare
+# "failed to play": permission denied, no sound card, and device busy all look
+# identical otherwise, and only one of them is a provisioning problem.
+_err=$(mktemp 2>/dev/null || echo /tmp/nut-sound-batt.$$)
+# shellcheck disable=SC2086  # PLAYER_ARGS is intentionally word-split
+if ! $PLAYER $PLAYER_ARGS "$SOUND_DIR/$PLAY_FILE" </dev/null >/dev/null 2>"$_err"; then
+    log "failed to play $SOUND_DIR/$PLAY_FILE: $(tr '\n' ' ' < "$_err")"
+    if grep -qi 'permission denied' "$_err" 2>/dev/null; then
+        log "hint: the nut user cannot open the audio device; \
+check 'id nut' for the audio/pulse-access group"
+    elif [ ! -e /dev/snd ]; then
+        log "hint: /dev/snd does not exist on this host"
+    fi
+    rm -f "$_err" 2>/dev/null || true
+    exit 0
+fi
+rm -f "$_err" 2>/dev/null || true
+
+exit 0

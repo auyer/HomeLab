@@ -75,10 +75,9 @@ nut_nocommwarntime: 300
 # with PIPEFN/LOCKFN/AT commented out, matching the stock Debian sample.
 nut_upssched_enabled: false
 nut_upssched_dir: /run/nut/upssched
-# Packaged by nut-client; override only together with
-# nut_upssched_cmd_custom: true.
+# Packaged by nut-client; the role does not manage this script itself.
+# Point it at your own file if you need different behaviour.
 nut_upssched_cmdscript: /usr/bin/upssched-cmd
-nut_upssched_cmd_custom: false
 nut_upssched_pipefn: "{{ nut_upssched_dir }}/upssched.pipe"
 nut_upssched_lockfn: "{{ nut_upssched_dir }}/upssched.lock"
 # AT <notifytype> * <action> <name> [<interval>]
@@ -98,6 +97,86 @@ nut_upssched_timers:
     action: CANCEL-TIMER
     name: upsgone
 
+# --- sounds ----------------------------------------------------------------
+# Audible alerts for UPS events, played on the host itself.
+#
+# Two separate mechanisms are involved because NUT cannot do this with one:
+#
+#   * Discrete events (ONBATT/LOWBATT/ONLINE/COMMBAD/COMMOK) are real upsmon
+#     notifications. They reach a script via NOTIFYCMD, which upsmon only
+#     calls for NOTIFYFLAG entries carrying +EXEC.
+#
+#   * Battery percentages are NOT notifications. NUT never fires "battery
+#     reached 60%"; battery.charge is just a value you have to poll. Those
+#     sounds therefore come from nut-sound-battery.service (a systemd timer
+#     running nut-sound-battery every nut_sound_battery_interval seconds and
+#     playing a file when a threshold is crossed going down).
+#
+# upsmon allows exactly one NOTIFYCMD, so when both upssched and sounds are in
+# use NOTIFYCMD points at /usr/local/bin/nut-notify, which fans out to both.
+nut_sounds_enabled: false
+nut_sounds_dir: /opt/sounds
+# aplay (alsa-utils) | paplay/pw-play (PulseAudio/PipeWire) | mplayer | ...
+# Must run as the nut user and be able to open an output device on this host.
+nut_sounds_player: aplay
+nut_sounds_player_args: "-q"
+# Notifications are best-effort: a missing/broken audio device must never
+# break shutdown handling, so playback is fire-and-forget and failures are
+# logged rather than raised.
+nut_sounds_files:
+  ONBATT: lost_power.wav
+  LOWBATT: low_power.wav
+  ONLINE: online.wav
+  COMMBAD: ""
+  COMMOK: ""
+  # Falling battery thresholds -> file. Checked top-down, so the first match
+  # wins; a percentage that keeps dropping through 60 then 40 then 20 plays
+  # each sound once as it crosses.
+nut_sound_battery_thresholds:
+  - { percent: 60, file: batery_60.wav }
+  - { percent: 40, file: batery_40.wav }
+  - { percent: 20, file: batery_20.wav }
+# Re-arm threshold: a sound replays only after the battery has climbed this
+# many points back above the level that triggered it. Without hysteresis a
+# battery hovering at exactly 60% would replay the same file on every poll.
+nut_sound_battery_hysteresis: 5
+# Only alert while discharging; charging from 10% back to 60% is not news.
+nut_sound_battery_only_on_battery: true
+# Guard against a stuck audio device queueing dozens of overlapping players.
+nut_sound_max_players: 3
+# Environment for the player inside nut-sound-battery.service. aplay needs a
+# usable default PCM; on PulseAudio/PipeWire hosts you may need to point it at
+# a server socket, e.g.
+#   nut_sounds_player_env:
+#     XDG_RUNTIME_DIR: "/run/user/1000"
+# Empty by default (plain ALSA via /dev/snd).
+nut_sounds_player_env: {}
+nut_sound_battery_interval: "1min"
+# Groups that let the nut user reach the sound device. This is not optional in
+# practice: upsmon runs NOTIFYCMD as RUN_AS_USER (default nut) and the sound
+# units run as nut too, so without these groups aplay fails with "Permission
+# denied" and the alert is silent exactly when it matters.
+#
+# 'auto' detects the audio stack on the target and grants what is needed:
+#   * 'audio' whenever /dev/snd exists (Debian: /dev/snd/* is 0660 root:audio)
+#   * 'pulse-access' when PulseAudio or PipeWire is running, since the server
+#     socket is not world-accessible
+# Set an explicit list to override, e.g. [audio] or [audio, pulse-access].
+nut_sounds_extra_groups: auto
+# Seconds to keep retrying when the audio device is not yet usable. A PipeWire
+# or PulseAudio server can still be starting right after boot, and losing the
+# first alert after a reboot is the worst possible time to lose it.
+nut_sounds_device_wait: 5
+# Play one real file as the nut user during provisioning so a permissions or
+# device problem fails the playbook instead of surfacing at 2am when the power
+# actually dies. Set false only if the target legitimately has no audio device
+# (a headless host with nowhere to make noise).
+nut_sounds_verify_audio: true
+# Which configured file to use for that probe.
+nut_audio_probe_file: "{{ nut_sounds_files['ONBATT'] }}"
+nut_sound_battery_unit: nut-sound-battery.service
+nut_sound_battery_timer_unit: nut-sound-battery.timer
+
 # --- services ---------------------------------------------------------------
 # nut-driver is a *target* (nut-driver.target), not a service, and the
 # per-device instances are created/removed by nut-driver-enumerator.service
@@ -106,3 +185,10 @@ nut_target_unit: nut.target
 nut_driver_enumerator_unit: nut-driver-enumerator.service
 nut_server_unit: nut-server.service
 nut_monitor_unit: nut-monitor.service
+nut_notify_cmd: /usr/local/bin/nut-notify
+# upssched is a separate program that upsmon would normally call directly.
+# When it is enabled, nut-notify calls it on our behalf.
+nut_upssched_bin: /usr/sbin/upssched
+# Where the battery poller keeps its per-threshold state. StateDirectory=nut-sound
+# in the unit makes systemd create and own /var/lib/nut-sound for us.
+nut_sound_state_file: /var/lib/nut-sound/battery-thresholds.state

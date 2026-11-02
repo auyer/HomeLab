@@ -40,6 +40,81 @@
   notify:
     - Restart nut-driver-enumerator
 
+# upsmon runs NOTIFYCMD as RUN_AS_USER (default: nut) and nut-sound-battery
+# runs as nut too, so the sound player is a nut-user process. It needs real
+# permission to open the sound device, not just a documented suggestion.
+- name: Inspect the audio stack on the target
+  when: nut_sounds_enabled | bool
+  block:
+    - name: Check whether an ALSA sound device exists
+      ansible.builtin.stat:
+        path: /dev/snd
+      register: nut_snd_dev
+
+    - name: Check which audio servers are running
+      ansible.builtin.shell: |
+        set -eu
+        found=""
+        for svc in pulseaudio pipewire pipewire-pulse wireplumber; do
+          if pgrep -x "$svc" >/dev/null 2>&1 || systemctl is-active --quiet "$svc" 2>/dev/null; then
+            found="$found $svc"
+          fi
+        done
+        echo "${found# }"
+      args:
+        executable: /bin/sh
+      register: nut_audio_servers
+      changed_when: false
+      failed_when: false
+
+    - name: Resolve the groups the nut user needs for audio
+      ansible.builtin.set_fact:
+        nut_audio_groups: >-
+          {%- if nut_sounds_extra_groups != 'auto' -%}
+          {{ nut_sounds_extra_groups }}
+          {%- else -%}
+          {%- set g = [] -%}
+          {%- if nut_snd_dev.stat.exists -%}
+          {%-   set _ = g.append('audio') -%}
+          {%- endif -%}
+          {%- if nut_audio_servers.stdout | default('') | trim | length > 0 -%}
+          {%-   set _ = g.append('pulse-access') -%}
+          {%- endif -%}
+          {{ g }}
+          {%- endif -%}
+
+    - name: List existing system groups so we never add the nut user to a missing one
+      ansible.builtin.shell: |
+        set -eu
+        getent group audio pulse-access pulse pipewire 2>/dev/null | cut -d: -f1 | tr '\n' ' '
+      args:
+        executable: /bin/sh
+      register: nut_existing_groups
+      changed_when: false
+      failed_when: false
+
+    - name: Warn when the target has no sound device at all
+      ansible.builtin.debug:
+        msg: >-
+          /dev/snd does not exist on this host. NUT sound alerts cannot play
+          until audio hardware/driver support is present.
+      when: not nut_snd_dev.stat.exists
+
+# The nut user must actually be a member: SupplementaryGroups= in the unit only
+# takes effect for groups that exist, and NOTIFYCMD runs as nut without the
+# unit's group list at all.
+- name: Allow the nut user to access audio devices
+  ansible.builtin.user:
+    name: nut
+    groups: "{{ nut_audio_groups | select('in', nut_existing_groups.stdout.split()) | list }}"
+    append: true
+  when:
+    - nut_sounds_enabled | bool
+    - nut_audio_groups | default([]) | length > 0
+  notify:
+    - Restart nut-monitor
+    - Restart nut-sound-battery timer
+
 # The package only fixes ownership on first install; re-assert it so a
 # re-provisioned or partially-purged host ends up in the same state.
 - name: Ensure /etc/nut exists with restrictive ownership
@@ -147,19 +222,154 @@
     mode: "0644"
   when: nut_upssched_enabled | bool
 
-# Optional override of the packaged /usr/bin/upssched-cmd stub.
-- name: Deploy custom upssched-cmd script
-  ansible.builtin.copy:
-    src: upssched-cmd
-    dest: "{{ nut_upssched_cmdscript }}"
+# --- sounds -----------------------------------------------------------------
+# aplay comes from alsa-utils; other players are expected to be installed
+# already, so the package is only pulled in for the default.
+- name: Ensure the audio player is installed
+  ansible.builtin.apt:
+    name:
+      - alsa-utils
+    state: present
+  when:
+    - nut_sounds_enabled | bool
+    - nut_sounds_player == 'aplay'
+
+- name: Ensure the sounds directory exists
+  ansible.builtin.file:
+    path: "{{ nut_sounds_dir }}"
+    state: directory
     owner: root
     group: root
     mode: "0755"
+  when: nut_sounds_enabled | bool
+
+# The .wav files themselves are supplied out of band (dropped in by hand or by
+# another mechanism); fail early and loudly rather than run blind, because a
+# silent alert system during an outage is worse than a failed playbook.
+- name: Check that the configured sound files are present
+  ansible.builtin.stat:
+    path: "{{ nut_sounds_dir }}/{{ item }}"
+  loop: >-
+    {{ (nut_sounds_files.values() | select('string') | select('!=', '') | list)
+       + (nut_sound_battery_thresholds | map(attribute='file') | list) }}
+  register: nut_sounds_stat
+  when: nut_sounds_enabled | bool
+
+- name: Assert the configured sound files exist
+  ansible.builtin.assert:
+    that:
+      - item.stat.exists
+    fail_msg: >-
+      Missing sound file {{ item.item }} in {{ nut_sounds_dir }}. Supply the
+      .wav files, or unset the event in nut_sounds_files /
+      nut_sound_battery_thresholds.
+    quiet: true
+  loop: "{{ nut_sounds_stat.results | default([]) }}"
+  loop_control:
+    label: "{{ item.item }}"
   when:
-    - nut_upssched_enabled | bool
-    - nut_upssched_cmd_custom | bool
+    - nut_sounds_enabled | bool
+    - not item.skipped | default(false)
+
+- name: Deploy nut-sound-event
+  ansible.builtin.template:
+    src: nut-sound-event.j2
+    dest: /usr/local/bin/nut-sound-event
+    owner: root
+    group: root
+    mode: "0755"
+  when: nut_sounds_enabled | bool
+
+- name: Deploy nut-sound-battery
+  ansible.builtin.template:
+    src: nut-sound-battery.j2
+    dest: /usr/local/bin/nut-sound-battery
+    owner: root
+    group: root
+    mode: "0755"
+  when: nut_sounds_enabled | bool
+  notify:
+    - Restart nut-sound-battery timer
+
+# NOTIFYCMD is deployed even when sounds are off, so upssched still gets its
+# EXEC hook. It is removed again when neither feature needs it.
+- name: Deploy the nut-notify NOTIFYCMD dispatcher
+  ansible.builtin.template:
+    src: nut-notify.j2
+    dest: "{{ nut_notify_cmd }}"
+    owner: root
+    group: root
+    mode: "0755"
   notify:
     - Restart nut-monitor
+
+- name: Deploy the battery sound systemd units
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "/etc/systemd/system/{{ item }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - "{{ nut_sound_battery_unit }}"
+    - "{{ nut_sound_battery_timer_unit }}"
+  when: nut_sounds_enabled | bool
+  notify:
+    - Restart nut-sound-battery timer
+
+- name: Enable and start the battery sound timer
+  ansible.builtin.systemd:
+    name: "{{ nut_sound_battery_timer_unit }}"
+    enabled: true
+    state: started
+    daemon_reload: true
+  when: nut_sounds_enabled | bool
+
+# Prove the nut user can really open the audio device. Without this the role
+# reports success and the alarm stays silent until the first real outage, which
+# is the worst possible time to discover a permissions problem.
+- name: Verify the nut user can play a sound
+  ansible.builtin.command:
+    argv:
+      - runuser
+      - -u
+      - nut
+      - --
+      - "{{ nut_sounds_player }}"
+      - "{{ nut_sounds_player_args }}"
+      - "{{ nut_sounds_dir }}/{{ nut_audio_probe_file }}"
+  changed_when: false
+  register: nut_audio_probe
+  failed_when: false
+  when:
+    - nut_sounds_enabled | bool
+    - nut_sounds_verify_audio | bool
+    - nut_snd_dev.stat.exists | default(false)
+
+- name: Report an unusable audio device
+  ansible.builtin.fail:
+    msg: >-
+      The nut user cannot play audio on this host.
+      Player said: {{ (nut_audio_probe.stderr | default('') | trim) or 'no error output' }}
+      Likely cause: the nut user is missing the audio group(s).
+      Currently granted: {{ nut_audio_groups | default([], true) }}
+      Fix with nut_sounds_extra_groups (e.g. [audio] or [audio, pulse-access]),
+      or set nut_sounds_verify_audio: false to skip this check.
+  when:
+    - nut_sounds_enabled | bool
+    - nut_sounds_verify_audio | bool
+    - nut_audio_probe is not skipped
+    - nut_audio_probe.rc | default(0) != 0
+
+- name: Disable the battery sound timer when sounds are off
+  ansible.builtin.systemd:
+    name: "{{ nut_sound_battery_timer_unit }}"
+    enabled: false
+    state: stopped
+  when: not (nut_sounds_enabled | bool)
+  # The unit file only exists once sounds have been enabled at least once; on a
+  # host that never had it, systemd would fail with "Unit not found".
+  failed_when: false
 
 # nut.target is the only correct enablement handle: `nut-driver` is a target,
 # not a service, and the per-device instances are created by the enumerator.

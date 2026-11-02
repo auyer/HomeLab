@@ -1,0 +1,15 @@
+[Unit]
+Description=Periodic NUT UPS battery threshold check
+Documentation=man:upsc(8)
+
+[Timer]
+# Fires shortly after boot, then at a fixed interval. AccuracySec is relaxed
+# because a battery threshold does not need sub-minute precision and a
+# wider window lets systemd batch this with other timers.
+OnBootSec=1min
+OnUnitActiveSec={{ nut_sound_battery_interval }}
+AccuracySec=15s
+Unit={{ nut_sound_battery_unit }}
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,12 @@
+---
+- name: Deploy NUT Power Monitor
+  hosts: pi3
+  become: true
+
+  roles:
+    - role: nut
+      vars:
+        nut_upssched_enabled: true
+        nut_sounds_enabled: true
+        nut_sounds_player: paplay
+        nut_sounds_verify_audio: false

@@ -1,0 +1,102 @@
+#!/bin/sh
+#
+# nut-sound-event — play one .wav for a discrete NUT notification type.
+#
+# Usage: nut-sound-event <NOTIFYTYPE> [<message>]
+#
+# Called by {{ nut_notify_cmd }} (upsmon's NOTIFYCMD) for events whose
+# NOTIFYFLAG carries +EXEC. The event -> file mapping is generated from
+# nut_sounds_files at install time, so this file holds no policy of its own.
+#
+# Managed by Ansible (role: nut). Local edits will be overwritten.
+#
+# Exit status is always 0: audio failure must never affect UPS/shutdown
+# handling.
+
+set -u
+
+TYPE="${1:-}"
+
+SOUND_DIR="{{ nut_sounds_dir }}"
+PLAYER="{{ nut_sounds_player }}"
+PLAYER_ARGS="{{ nut_sounds_player_args }}"
+MAX_PLAYERS="{{ nut_sound_max_players }}"
+DEVICE_WAIT="{{ nut_sounds_device_wait }}"
+
+log() {
+    logger -t nut-sound -- "$*" 2>/dev/null || true
+}
+
+# Fire-and-forget: never block upsmon, which may be on a shutdown deadline.
+# setsid detaches the player so it cannot hold upsmon's process group open.
+play() {
+    _file="$1"
+    [ -n "$_file" ] || return 0
+
+    if [ ! -r "$SOUND_DIR/$_file" ]; then
+        log "missing sound file: $SOUND_DIR/$_file"
+        return 0
+    fi
+
+    # Guard against a stuck player accumulating a pile of processes.
+    if [ -n "$MAX_PLAYERS" ] && [ "$MAX_PLAYERS" -gt 0 ] 2>/dev/null; then
+        _count=$(pgrep -c -f "$PLAYER .*$SOUND_DIR/" 2>/dev/null || echo 0)
+        if [ "${_count:-0}" -ge "$MAX_PLAYERS" ] 2>/dev/null; then
+            log "skipping $_file: $_count players already running"
+            return 0
+        fi
+    fi
+
+    # Run the player detached but capture its stderr, so a failure reports the
+    # real reason (permission denied, no card, busy device) instead of a bare
+    # "failed to play". The wait is bounded by PLAY_WAIT so upsmon is never
+    # held up for long.
+    _err=$(mktemp 2>/dev/null || echo /tmp/nut-sound.$$)
+    if command -v setsid >/dev/null 2>&1; then
+        setsid $PLAYER $PLAYER_ARGS "$SOUND_DIR/$_file" </dev/null >/dev/null 2>"$_err" &
+    else
+        $PLAYER $PLAYER_ARGS "$SOUND_DIR/$_file" </dev/null >/dev/null 2>"$_err" &
+    fi
+    _pid=$!
+
+    # Give the player a moment to fail fast on permission/device errors, then
+    # stop waiting: playback may legitimately outlast this call.
+    _waited=0
+    while [ "$_waited" -lt "$DEVICE_WAIT" ]; do
+        if ! kill -0 "$_pid" 2>/dev/null; then
+            break
+        fi
+        sleep 1
+        _waited=$((_waited + 1))
+    done
+
+    if [ -s "$_err" ]; then
+        log "player error for $_file: $(tr '\n' ' ' < "$_err")"
+        # Point at the actual cause when it is a permission problem, because
+        # that is the difference between "broken host" and "missing group".
+        if grep -qi 'permission denied' "$_err" 2>/dev/null; then
+            log "hint: the nut user cannot open the audio device; \
+check 'id nut' for the audio/pulse-access group"
+        fi
+    fi
+    rm -f "$_err" 2>/dev/null || true
+    return 0
+}
+
+[ -n "$TYPE" ] || exit 0
+
+case "$TYPE" in
+{% for notifytype, file in nut_sounds_files.items() %}
+{% if file | string | length > 0 %}
+    {{ notifytype }})
+        play "{{ file }}"
+        ;;
+{% endif %}
+{% endfor %}
+    *)
+        # Unmapped event type: nothing to play, and no log spam.
+        exit 0
+        ;;
+esac
+
+exit 0

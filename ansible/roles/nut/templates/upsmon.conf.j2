@@ -217,9 +217,11 @@ SHUTDOWNCMD "{{ nut_shutdowncmd }}"
 #
 # Example:
 # NOTIFYCMD /usr/bin/notifyme
-{% if nut_upssched_enabled | bool %}
-# upssched handles timers for the NOTIFYFLAG ...+EXEC events below.
-NOTIFYCMD /usr/sbin/upssched
+{% if nut_upssched_enabled | bool or nut_sounds_enabled | bool %}
+# upsmon accepts a single NOTIFYCMD. When both features are active it points at
+# {{ nut_notify_cmd }}, which fans out to upssched (timers) and to the
+# sound player. See the role README.
+NOTIFYCMD {{ nut_notify_cmd }}
 {% endif %}
 
 # --------------------------------------------------------------------------
@@ -368,10 +370,27 @@ POWERDOWNFLAG "{{ nut_powerdownflag }}"
 # IGNORE - Don't do anything
 #
 # If you use IGNORE, don't use any other flags on the same line.
+{% if nut_upssched_enabled | bool or nut_sounds_enabled | bool %}
+# EXEC is what invokes NOTIFYCMD; without it neither upssched nor the sound
+# player ever runs. Sounds need every event that has a .wav assigned, upssched
+# needs every event with a matching AT rule; the union of both is emitted here.
+{% set exec_types = [] %}
 {% if nut_upssched_enabled | bool %}
-# Required for upssched: without EXEC it is never invoked.
-{% for timer in nut_upssched_timers %}
-NOTIFYFLAG {{ timer.notifytype }} SYSLOG+WALL+EXEC
+{%   for timer in nut_upssched_timers %}
+{%     if timer.notifytype not in exec_types %}
+{%       set _ = exec_types.append(timer.notifytype) %}
+{%     endif %}
+{%   endfor %}
+{% endif %}
+{% if nut_sounds_enabled | bool %}
+{%   for type, file in nut_sounds_files.items() %}
+{%     if file | string | length > 0 and type not in exec_types %}
+{%       set _ = exec_types.append(type) %}
+{%     endif %}
+{%   endfor %}
+{% endif %}
+{% for type in exec_types %}
+NOTIFYFLAG {{ type }} SYSLOG+WALL+EXEC
 {% endfor %}
 {% endif %}
 
