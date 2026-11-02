@@ -14,8 +14,9 @@ ExecStart=/usr/local/bin/nut-sound-battery
 # actually grants /dev/snd access; /dev/snd is 0660 root:audio on Debian.
 User=nut
 Group=nut
-{% if nut_sounds_extra_groups | length > 0 %}
-SupplementaryGroups={{ nut_sounds_extra_groups | join(' ') }}
+{% set _audio_groups = nut_audio_groups | default(nut_sounds_extra_groups if nut_sounds_extra_groups != 'auto' else []) %}
+{% if _audio_groups | length > 0 %}
+SupplementaryGroups={{ _audio_groups | join(' ') }}
 {% endif %}
 
 # The player must be able to find the audio device; a bare environment leaves
@@ -39,9 +40,11 @@ StateDirectory=nut-sound
 ReadWritePaths=/run/nut
 # DeviceAllow only has an effect together with DevicePolicy=closed; without it
 # the default policy permits every device, so state the intent explicitly.
+# Note: the device node path must NOT have a trailing slash; systemd rejects
+# "/dev/snd/ rw" with "not a device".
 DevicePolicy=closed
 DeviceAllow=/dev/null rw
 DeviceAllow=/dev/zero rw
-DeviceAllow=/dev/snd/ rw
+DeviceAllow=/dev/snd rw
 DeviceAllow=/dev/dsp rw
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6

@@ -32,10 +32,78 @@ STATE_FILE="{{ nut_sound_state_file }}"
 HYSTERESIS="{{ nut_sound_battery_hysteresis }}"
 ON_BATT_ONLY="{{ nut_sound_battery_only_on_battery | bool | lower }}"
 MAX_PLAYERS="{{ nut_sound_max_players }}"
+{% if nut_heartbeat_enabled %}
+HEARTBEAT_URL="{{ nut_heartbeat_url }}"
+HEARTBEAT_TIMEOUT="{{ nut_heartbeat_timeout }}"
+HEARTBEAT_PING_MODE="{{ nut_heartbeat_ping_mode }}"
+HEARTBEAT_MSG_UP="{{ nut_heartbeat_msg_up }}"
+HEARTBEAT_MSG_DOWN="{{ nut_heartbeat_msg_down }}"
+{% endif %}
 
 log() {
     logger -t nut-sound -- "$*" 2>/dev/null || true
 }
+{% if nut_heartbeat_enabled %}
+
+# --- heartbeat ---------------------------------------------------------------
+# Push the power state to Uptime Kuma. status=up means "mains power present",
+# status=down means "running on battery", so the monitor tracks the UPS rather
+# than just this process. A stopped timer sends nothing and Kuma notices.
+#
+# Never fatal: a network blip must not fail the unit, because the missed
+# heartbeat is already visible in Kuma.
+heartbeat() {
+    _hb_status="$1"
+    _hb_msg="$2"
+    _hb_ping=""
+
+    # Kuma takes ?ping= as an integer override of the measured latency. In
+    # charge mode the monitor doubles as a battery gauge; otherwise ping stays
+    # empty and Kuma records the real round-trip time.
+    if [ "$HEARTBEAT_PING_MODE" = "charge" ] && [ -n "${CHARGE:-}" ]; then
+        _hb_ping="$CHARGE"
+    fi
+
+    curl -s -o /dev/null --max-time "$HEARTBEAT_TIMEOUT" \
+        --get \
+        --data-urlencode "status=$_hb_status" \
+        --data-urlencode "msg=$_hb_msg" \
+        --data-urlencode "ping=$_hb_ping" \
+        "$HEARTBEAT_URL" >/dev/null 2>&1 || true
+}
+
+# Derive the state once, from ups.status, and reuse it everywhere below.
+# ups.status is a space-separated flag list, so "OL CHRG" (on line, charging)
+# is still up and "OB DISCHRG" is still down. Matching the OB token is the only
+# correct test; comparing the whole string to OL would misreport OL CHRG.
+heartbeat_status() {
+    case " ${STATUS:-} " in
+        *" OB "*) echo "down" ;;
+        *" OL "*) echo "up"   ;;
+        *)
+            # No OB and no OL: the driver is not reporting a usable line state
+            # (startup, stale, comms loss). Treat as down so a UPS that cannot
+            # tell us it has mains is not silently reported healthy.
+            echo "down"
+            ;;
+    esac
+}
+
+heartbeat_msg() {
+    if [ "$1" = "up" ]; then
+        printf '%s' "$HEARTBEAT_MSG_UP"
+    else
+        _m="$HEARTBEAT_MSG_DOWN"
+        _m=$(printf '%s' "$_m" | sed -e "s/{charge}/${CHARGE:-?}/g" -e "s/{status}/${STATUS:-?}/g")
+        printf '%s' "$_m"
+    fi
+}
+
+send_heartbeat() {
+    _s=$1
+    heartbeat "$_s" "$(heartbeat_msg "$_s")"
+}
+{% endif %}
 
 mkdir -p "$(dirname "$STATE_FILE")" 2>/dev/null || true
 
@@ -44,13 +112,19 @@ mkdir -p "$(dirname "$STATE_FILE")" 2>/dev/null || true
 # UPS support, so parse defensively and bail quietly when it is unusable.
 CHARGE=$(upsc "$UPS" battery.charge 2>/dev/null | tr -dc '0-9')
 
+STATUS=$(upsc "$UPS" ups.status 2>/dev/null || echo "")
+{% if nut_heartbeat_enabled %}
+# Heartbeat goes out on EVERY tick, before any of the early exits below, so the
+# monitor keeps tracking the UPS even when there is nothing to play.
+HB_STATUS=$(heartbeat_status)
+send_heartbeat "$HB_STATUS"
+{% endif %}
+
 if [ -z "$CHARGE" ]; then
     # No usable reading. Do not touch state: a dropout must not look like a
     # crossing, and losing state would cause spurious replays.
     exit 0
 fi
-
-STATUS=$(upsc "$UPS" ups.status 2>/dev/null || echo "")
 
 # Only alert while discharging by default; charging back up is not news.
 if [ "$ON_BATT_ONLY" = "true" ]; then

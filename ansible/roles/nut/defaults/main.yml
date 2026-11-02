@@ -177,6 +177,30 @@ nut_audio_probe_file: "{{ nut_sounds_files['ONBATT'] }}"
 nut_sound_battery_unit: nut-sound-battery.service
 nut_sound_battery_timer_unit: nut-sound-battery.timer
 
+# --- heartbeat (Uptime Kuma push) -------------------------------------------
+# On every poller tick, push the UPS power state to an Uptime Kuma push monitor.
+# The monitor therefore reflects MAINS POWER, not process liveness:
+#   * on line power (ups.status contains OL) -> status=up
+#   * on battery    (ups.status contains OB) -> status=down
+# A dead host, a broken driver or a stopped timer produce no push at all, which
+# Kuma reports as a missed heartbeat, so liveness comes for free.
+#
+# The URL embeds a push token and is therefore a secret: set nut_heartbeat_url
+# in group_vars for the host (see group_vars/pi3.yml), never here.
+nut_heartbeat_enabled: false
+nut_heartbeat_url: ""
+# Timeout for the push. It must be short: this runs on a timer and a hung
+# request would pile up runs.
+nut_heartbeat_timeout: 10
+# What the monitor's "ping" column carries.
+#   latency -> leave ping empty so Kuma records the real HTTP round-trip time
+#   charge  -> send the battery percentage, turning the monitor into a gauge
+nut_heartbeat_ping_mode: latency
+# Message sent while on line power. Keep it short: it is shown per heartbeat.
+nut_heartbeat_msg_up: "OK"
+# Message sent while on battery; {charge} and {status} are substituted.
+nut_heartbeat_msg_down: "on battery {charge}%"
+
 # --- services ---------------------------------------------------------------
 # nut-driver is a *target* (nut-driver.target), not a service, and the
 # per-device instances are created/removed by nut-driver-enumerator.service
