@@ -1,0 +1,162 @@
+---
+# nut-client role tasks — configure a host to monitor a remote NUT server and
+# shut itself down when that server reports a critical power state.
+#
+# Component model on Debian/Raspbian (nut-client package only):
+#   nut-monitor.service   upsmon — the only unit that runs here
+#
+# In MODE=netclient the packaged nut-server.service and
+# nut-driver-enumerator.service skip themselves via ExecCondition, so there is
+# deliberately no driver or upsd on these hosts.
+
+- name: Assert required variables are sane
+  ansible.builtin.assert:
+    that:
+      - nut_client_mode == 'netclient'
+      - nut_client_monitor_role == 'secondary'
+      - nut_client_monitor_ups is match('.+@.+')
+      - nut_client_monitor_user | length > 0
+      - nut_client_monitor_password | length > 0
+      - nut_client_shutdowncmd | length > 0
+    fail_msg: >-
+      nut-client is a netclient/secondary role: nut_client_mode must be
+      netclient, nut_client_monitor_role must be secondary, nut_client_monitor_ups
+      must look like ups@host[:port], and nut_client_monitor_user /
+      nut_client_monitor_password must be set (see group_vars for the host).
+    quiet: true
+
+# A timer referencing an undefined key would render an invalid AT line, so fail
+# on the shape of the data rather than shipping a broken upssched.conf.
+- name: Assert upssched timers are well formed
+  ansible.builtin.assert:
+    that:
+      - item.type is defined
+      - item.timer is defined
+      - item.interval is defined
+      - item.timer | string | length > 0
+      - item.interval | string | length > 0
+    fail_msg: >-
+      Each nut_client_upssched_timers entry needs type, timer and interval,
+      e.g. {type: ONBATT, cancel_type: ONLINE, ups: '*', timer: onbattwarn,
+      interval: 30}
+    quiet: true
+  loop: "{{ nut_client_upssched_timers }}"
+  loop_control:
+    label: "{{ item.timer | default('?') }}"
+  when:
+    - nut_client_upssched_enabled | bool
+    - nut_client_upssched_timers | length > 0
+
+# upsmon accepts exactly ONE NOTIFYCMD. If it is set to something other than
+# the upssched binary, upsmon never invokes upssched, so every AT rule becomes
+# dead config that silently never fires. Catch that at deploy time.
+- name: Assert upssched and an overriding NOTIFYCMD are not both configured
+  ansible.builtin.assert:
+    that:
+      - nut_client_notifycmd == nut_client_upssched_bin
+    fail_msg: >-
+      nut_client_upssched_enabled is true but nut_client_notifycmd is set to
+      '{{ nut_client_notifycmd }}' instead of '{{ nut_client_upssched_bin }}'.
+      upsmon has a single NOTIFYCMD, so the AT timers would never run. Either
+      clear nut_client_notifycmd (upsmon will then call upssched directly) or
+      disable nut_client_upssched_enabled.
+    quiet: true
+  when:
+    - nut_client_upssched_enabled | bool
+    - nut_client_notifycmd | length > 0
+
+- name: Ensure NUT client is installed
+  ansible.builtin.apt:
+    name: "{{ nut_client_packages }}"
+    state: present
+    update_cache: true
+
+# upsmon.conf holds the monitoring password and the shutdown command. The
+# packaged layout is /etc/nut owned by root:nut, and the config files must be
+# readable by RUN_AS_USER (upsmon reloads them as nut) but never world-readable.
+- name: Ensure /etc/nut exists with restrictive ownership
+  ansible.builtin.file:
+    path: /etc/nut
+    state: directory
+    owner: root
+    group: nut
+    mode: "0750"
+
+- name: Deploy nut.conf
+  ansible.builtin.template:
+    src: nut.conf.j2
+    dest: /etc/nut/nut.conf
+    owner: root
+    group: nut
+    mode: "0640"
+  notify:
+    - Restart nut-monitor
+
+- name: Deploy upsmon.conf
+  ansible.builtin.template:
+    src: upsmon.conf.j2
+    dest: /etc/nut/upsmon.conf
+    owner: root
+    group: nut
+    mode: "0640"
+  notify:
+    - Restart nut-monitor
+
+# upssched.conf is only meaningful when upsmon actually calls upssched, which
+# upsmon.conf does via NOTIFYCMD when nut_client_upssched_enabled is true.
+- name: Deploy upssched.conf
+  ansible.builtin.template:
+    src: upssched.conf.j2
+    dest: /etc/nut/upssched.conf
+    owner: root
+    group: nut
+    mode: "0640"
+  when: nut_client_upssched_enabled | bool
+  notify:
+    - Restart nut-monitor
+
+# upsmon starts upssched as RUN_AS_USER, so that user must be able to create
+# the FIFO and lock file. /run is a tmpfs, hence the tmpfiles entry below.
+- name: Ensure the upssched runtime directory exists
+  ansible.builtin.file:
+    path: "{{ nut_client_upssched_dir }}"
+    state: directory
+    owner: "{{ nut_client_runasuser }}"
+    group: "{{ nut_client_runasuser }}"
+    mode: "0750"
+  when: nut_client_upssched_enabled | bool
+
+- name: Persist the upssched runtime directory across reboots
+  ansible.builtin.copy:
+    dest: /etc/tmpfiles.d/nut-client-upssched.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      # Managed by the nut-client Ansible role.
+      # /run is a tmpfs, so the upssched FIFO directory must be recreated at
+      # boot before upsmon (and the upssched it spawns) needs it.
+      d {{ nut_client_upssched_dir }} 0750 {{ nut_client_runasuser }} {{ nut_client_runasuser }} -
+  when: nut_client_upssched_enabled | bool
+
+- name: Remove the upssched runtime directory when upssched is off
+  ansible.builtin.file:
+    path: "{{ nut_client_upssched_dir }}"
+    state: absent
+  when: not (nut_client_upssched_enabled | bool)
+
+- name: Remove the upssched tmpfiles entry when upssched is off
+  ansible.builtin.file:
+    path: /etc/tmpfiles.d/nut-client-upssched.conf
+    state: absent
+  when: not (nut_client_upssched_enabled | bool)
+
+# In netclient mode nut-monitor.service is the only unit that should run. It is
+# enabled directly rather than through nut.target, because that umbrella also
+# wants the driver and upsd, which have no configuration on these hosts.
+- name: Enable and start upsmon
+  ansible.builtin.systemd:
+    name: "{{ nut_client_monitor_unit }}"
+    enabled: true
+    state: started
+    daemon_reload: true

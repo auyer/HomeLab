@@ -1,0 +1,20 @@
+# Network UPS Tools: nut.conf — NUT netclient
+#
+# This file is sourced by the packaged systemd units to learn which components
+# belong to this host. In netclient mode only upsmon runs: there is no locally
+# attached UPS, so no driver and no upsd are started.
+
+MODE={{ nut_client_mode }}
+
+# The optional 'UPSMON_OPTIONS' allow to set upsmon specific command-line
+# options. It is ignored when 'MODE' above indicates that no upsmon should be
+# running. It may be redundant in comparison to options which can be set in
+# `upsmon.conf`.
+{% if nut_client_upsmon_options | length > 0 %}
+UPSMON_OPTIONS={{ nut_client_upsmon_options }}
+{% else %}
+#UPSMON_OPTIONS=
+{% endif %}
+
+# upsd and the drivers are not part of a netclient, so UPSD_OPTIONS is
+# meaningless here and is intentionally not set.

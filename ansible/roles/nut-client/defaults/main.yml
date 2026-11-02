@@ -1,0 +1,107 @@
+---
+# Default variables for the nut-client role (user-overridable)
+#
+# Deploys a NUT "netclient": upsmon only, monitoring a *remote* NUT server and
+# reacting to its shutdown signals. No driver and no upsd run on these hosts,
+# so they neither talk to a UPS nor serve UPS data to anyone else.
+
+# --- packages ---------------------------------------------------------------
+# nut-client ships upsmon (the monitor/shutdown responder), upsc, upscmd and
+# upssched. The nut-server package is deliberately NOT installed: these hosts
+# have no locally attached UPS and must not start a driver or upsd.
+nut_client_packages:
+  - nut-client
+
+# --- nut.conf ---------------------------------------------------------------
+# MODE gates every unit via an ExecCondition in the packaged systemd units.
+# In "netclient" mode only nut-monitor.service starts; nut-server.service and
+# nut-driver-enumerator.service skip themselves. Flipping this away from
+# netclient would try to start a driver/upsd that has no configuration here.
+nut_client_mode: netclient
+nut_client_upsmon_options: ""
+
+# --- upsmon.conf ------------------------------------------------------------
+# <upsname>@<hostname>[:<port>] of the NUT server to monitor. This must match
+# the [section] name in the server's ups.conf plus that server's address.
+nut_client_monitor_ups: "ups@10.255.3.60"
+# Number of power supplies on THIS host fed by that UPS. Most hosts have one.
+nut_client_monitor_powervalue: 1
+# Credentials must exist in the server's upsd.users. "observer" is the
+# read-only monitoring account; credentials have no usable default on purpose,
+# so the role asserts they are set (keep them in group_vars for the host).
+nut_client_monitor_user: "observer"
+nut_client_monitor_password: ""
+# "secondary" is the whole point of this role: shut down as soon as the primary
+# tells us the UPS is critical, rather than deciding on our own.
+nut_client_monitor_role: secondary
+nut_client_minsupplies: 1
+# This is the command that actually powers the host off. It is destructive by
+# design; the value mirrors the packaged default so it works unmodified.
+nut_client_shutdowncmd: "/sbin/shutdown -h +0"
+# Only the primary uses this flag (to tell the UPS to cut power). Kept for
+# parity with the packaged file and harmless on a secondary.
+nut_client_powerdownflag: "/etc/killpower"
+nut_client_pollfreq: 5
+nut_client_pollfreqalert: 5
+nut_client_deadtime: 15
+nut_client_hostsync: 15
+# Deliberately short. On a secondary, FINALDELAY is the sleep between
+# NOTIFY_SHUTDOWN and SHUTDOWNCMD. It must stay comfortably below the
+# primary's HOSTSYNC (15s there) or the primary gives up waiting for us and
+# proceeds without having seen us disconnect. The extracted config uses 5.
+nut_client_finaldelay: 5
+nut_client_offduration: 30
+nut_client_rbwarntime: 43200
+nut_client_nocommwarntime: 300
+# Unprivileged account upsmon drops to for everything except SHUTDOWNCMD, which
+# stays with the root parent. Matches the user created by the nut package.
+nut_client_runasuser: nut
+# Optional minimum debug level for troubleshooting (left unset = package default).
+nut_client_debug_min: ""
+
+# --- notifications ----------------------------------------------------------
+# upsmon accepts exactly one NOTIFYCMD, and it is only invoked for event types
+# that have the EXEC flag. Left empty by default so these hosts keep the stock
+# syslog+wall behaviour from the extracted config; set it to e.g.
+# /usr/local/bin/nut-notify or /usr/sbin/upssched to actually run a program.
+nut_client_notifycmd: ""
+# Event types that should additionally run NOTIFYCMD. Ignored unless
+# nut_client_notifycmd is set (EXEC without NOTIFYCMD does nothing).
+nut_client_notifyflags: []
+# Base behaviour applied to every NOTIFYFLAG line the role emits.
+nut_client_notifyflag_base: SYSLOG+WALL
+
+# --- upssched ---------------------------------------------------------------
+# Off by default: the extracted upssched.conf only sets CMDSCRIPT while PIPEFN,
+# LOCKFN and every AT rule are commented out, so upssched is not actually wired
+# up. Enabling this deploys a complete, working upssched configuration.
+nut_client_upssched_enabled: false
+# The upssched binary upsmon must point NOTIFYCMD at for timers to be scheduled.
+nut_client_upssched_bin: /usr/sbin/upssched
+# Packaged helper provided by nut-client; it is a case..esac dispatcher that
+# receives the timer name as its single argument.
+nut_client_upssched_cmdscript: /usr/bin/upssched-cmd
+# Read-write runtime directory shared by upsmon (which starts upssched as
+# RUN_AS_USER) and the upssched daemon itself. Kept separate from /run/nut,
+# which belongs to the server side.
+nut_client_upssched_dir: /run/nut-upssched
+nut_client_upssched_pipefn: "{{ nut_client_upssched_dir }}/upssched.pipe"
+nut_client_upssched_lockfn: "{{ nut_client_upssched_dir }}/upssched.lock"
+# AT rules. Each entry becomes one "AT <type> <ups> START-TIMER <timer> <secs>"
+# line, and an optional <cancel_type> produces the matching CANCEL-TIMER so a
+# recovered event stops the countdown instead of firing late.
+#
+# Example:
+#   nut_client_upssched_timers:
+#     - type: ONBATT
+#       cancel_type: ONLINE
+#       ups: "*"
+#       timer: onbattwarn
+#       interval: 30
+nut_client_upssched_timers: []
+
+# --- services ---------------------------------------------------------------
+# In netclient mode the only unit that should run is upsmon. There is no
+# nut.target to enable here: that umbrella also pulls in the driver/server
+# side, which has nothing to do on these hosts.
+nut_client_monitor_unit: nut-monitor.service

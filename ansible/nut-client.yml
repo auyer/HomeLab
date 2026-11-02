@@ -1,0 +1,12 @@
+---
+# Configure hosts to monitor the pi3 UPS and shut themselves down when it
+# reports a critical power state.
+#
+# These hosts run upsmon only (MODE=netclient): no driver, no upsd. The server
+# side lives in nut-server.yml on pi3.
+- name: Deploy NUT client (remote UPS shutdown responders)
+  hosts: nut_clients
+  become: true
+
+  roles:
+    - role: nut-client

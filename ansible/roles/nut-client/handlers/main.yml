@@ -1,0 +1,9 @@
+---
+# Restarting upsmon re-reads upsmon.conf, including MONITOR credentials and any
+# NOTIFYCMD/NOTIFYFLAG change. There is no reload path that is worth the risk
+# here: the file holds the shutdown command and the monitor target.
+- name: Restart nut-monitor
+  ansible.builtin.systemd:
+    name: "{{ nut_client_monitor_unit }}"
+    state: restarted
+    daemon_reload: true
