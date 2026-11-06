@@ -18,6 +18,7 @@
 
 - name: Install Docker packages
   when: compose_engine == 'docker'
+  become: true
   ansible.builtin.apt:
     name:
       - docker.io
@@ -27,6 +28,7 @@
 
 - name: Install Podman packages
   when: compose_engine == 'podman'
+  become: true
   ansible.builtin.apt:
     name:
       - podman
