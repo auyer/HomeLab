@@ -13,5 +13,7 @@
 - import_playbook: coturn.yml
 - import_playbook: slidge.yml
 - import_playbook: biboumi.yml
+- import_playbook: jitsi.yml
 - import_playbook: navidrome.yml
 - import_playbook: nut-server.yml
+- import_playbook: nut-client.yml
