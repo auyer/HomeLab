@@ -2,7 +2,7 @@ services:
     nginx:
         # Non-slim Debian image: ships the ngx_http_acme_module dynamic module
         # used to issue certificates for alternative_domain_names.
-        image: docker.io/nginx:1.29.4
+        image: docker.io/nginx:${NGINX_IMAGE_VERSION}
         # user: "1000:1000"
         ports:
           # - "80:80"
