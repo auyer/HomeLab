@@ -1,0 +1,5 @@
+apiVersion: v2
+name: calibre
+description: "calibre-web-nextgen"
+version: "1.0.0"
+type: application

@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ .Release.Name }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}
+    spec:
+      securityContext:
+        runAsUser: {{ .Values.podSecurityContext.runAsUser }}
+        runAsGroup: {{ .Values.podSecurityContext.runAsGroup }}
+        fsGroup: {{ .Values.podSecurityContext.fsGroup }}
+      containers:
+        - name: calibre-web-nextgen
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.service.port }}
+              protocol: TCP
+              name: http
+          livenessProbe:
+            httpGet:
+                path: /
+                port: {{ .Values.service.port }}
+            initialDelaySeconds: 60
+            periodSeconds: 60
+          env:
+            {{- range $key, $value := .Values.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: library
+              mountPath: /calibre-library
+            {{- if .Values.persistence.ingest.enabled }}
+            - name: ingest
+              mountPath: /cwa-book-ingest
+            {{- end }}
+            {{- if .Values.persistence.plugins.enabled }}
+            - name: plugins
+              mountPath: /config/.config/calibre/plugins
+            {{- end }}
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-config
+        - name: library
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-library
+        {{- if .Values.persistence.ingest.enabled }}
+        - name: ingest
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-ingest
+        {{- end }}
+        {{- if .Values.persistence.plugins.enabled }}
+        - name: plugins
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-plugins
+        {{- end }}

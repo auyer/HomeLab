@@ -1,0 +1,60 @@
+image:
+  repository: ghcr.io/new-usemame/calibre-web-nextgen
+  # :latest tracks the newest release; pin a version tag (e.g. v4.0.86) for production.
+  tag: latest
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+# All storage is NFS, consumed through PVCs provisioned by the nfs storage class.
+persistence:
+  storageClassName: nfs
+  config:
+    requestSize: 2Gi
+  library:
+    requestSize: 50Gi
+  # Ingest dir: books dropped here are auto-added to the library and removed
+  # after processing. Toggle off if you don't use the auto-ingest feature.
+  ingest:
+    enabled: true
+    requestSize: 2Gi
+  # Optional calibre plugins folder, mounted inside /config.
+  plugins:
+    enabled: true
+    requestSize: 1Gi
+
+podSecurityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+
+ingress:
+  enabled: true
+  # className: "" # default
+  annotations:
+      traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+  hosts:
+    - host: books.rcpassos.me
+      paths:
+        - path: /
+          pathType: Prefix
+
+service:
+  port: 8083
+
+resources:
+  limits:
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+env:
+  PUID: "1000"
+  PGID: "1000"
+  TZ: America/Sao_Paulo
+  # Hardcover API key (metadata provider), get one: https://docs.hardcover.app/api/getting-started/
+  HARDCOVER_TOKEN: ""
+  # Storage is on NFS: disable WAL/chown and use polling for file watching.
+  NETWORK_SHARE_MODE: "true"
+  CWA_WATCH_MODE: poll
