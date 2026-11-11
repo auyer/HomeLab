@@ -58,8 +58,14 @@ spec:
           persistentVolumeClaim:
             claimName: {{ .Release.Name }}-config
         - name: library
+        {{- if .Values.persistence.library.nfs.enabled }}
+          nfs:
+            server: {{ .Values.persistence.library.nfs.server }}
+            path: {{ .Values.persistence.library.nfs.path }}
+        {{- else }}
           persistentVolumeClaim:
             claimName: {{ .Release.Name }}-library
+        {{- end }}
         {{- if .Values.persistence.ingest.enabled }}
         - name: ingest
           persistentVolumeClaim:

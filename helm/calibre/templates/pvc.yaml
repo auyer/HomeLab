@@ -12,6 +12,7 @@ spec:
   resources:
     requests:
       storage: {{ .Values.persistence.config.requestSize }}
+{{- if not .Values.persistence.library.nfs.enabled }}
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -27,6 +28,7 @@ spec:
   resources:
     requests:
       storage: {{ .Values.persistence.library.requestSize }}
+{{- end }}
 {{- if .Values.persistence.ingest.enabled }}
 ---
 apiVersion: v1

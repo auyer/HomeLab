@@ -13,6 +13,11 @@ persistence:
     requestSize: 2Gi
   library:
     requestSize: 50Gi
+    nfs:
+      enabled: true
+      server: nas.rcpassos.me
+      path: /mnt/data/Media/Books
+
   # Ingest dir: books dropped here are auto-added to the library and removed
   # after processing. Toggle off if you don't use the auto-ingest feature.
   ingest:
