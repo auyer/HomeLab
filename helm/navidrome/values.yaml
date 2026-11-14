@@ -7,7 +7,7 @@ replicaCount: 1
 
 nfs:
   server: nas.rcpassos.me
-  path: /mnt/data/Media/jellyfin/Music
+  path: /mnt/data/Media/Music
 
 persistence:
   requestSize: 10Gi
