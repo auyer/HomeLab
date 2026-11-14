@@ -1,4 +1,4 @@
-KUBESEAL_VERSION=0.38.4
+KUBESEAL_VERSION=0.41.2
 
 # I wish this was a helm chart ;P
 upgrade:
