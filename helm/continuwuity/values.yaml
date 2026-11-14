@@ -1,6 +1,6 @@
 image:
   repository: forgejo.ellis.link/continuwuation/continuwuity
-  tag: v26.9.1-maxperf
+  tag: v26.9.3-maxperf
   pullPolicy: IfNotPresent
 
 persistence:
@@ -70,3 +70,4 @@ config:
     query_trusted_key_servers_first = true
     rocksdb_optimize_for_spinning_disks = true
     rocksdb_direct_io = false
+    ip_address_detection.header = "X-Forwarded-For"
