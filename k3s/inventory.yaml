@@ -60,3 +60,7 @@ k3s_cluster:
           auth:
             username: {{ distribution_user }}
             password: {{ distribution_pass }}
+        distribution.rcpassos.me:
+          auth:
+            username: {{ distribution_user }}
+            password: {{ distribution_pass }}
